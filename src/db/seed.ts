@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { checklistItemDefinicion, usuarios } from "./schema";
@@ -25,49 +26,19 @@ if (!cadena) {
 
 const dbSeed = drizzle(new Pool({ connectionString: cadena }));
 
-// Catálogo inicial del checklist de mantenimiento.
-// Es un punto de partida editable — un admin puede añadir, desactivar
-// o renombrar puntos desde la propia app sin tocar este archivo.
+// Catálogo inicial del checklist de mantenimiento: los 24 puntos del
+// contrato. Vive en JSON porque lo comparten dos procesos distintos —
+// este seed (TypeScript, vía tsx) y scripts/aplicar-esquema.mjs (JavaScript
+// a secas, que es lo único que se puede ejecutar dentro del contenedor de
+// producción). Un solo origen evita que se desincronicen.
 const ITEMS: {
   categoria: "paneles" | "estructura" | "inversor" | "cuadros_protecciones" | "baterias";
   nombre: string;
-  periodicidadMeses: 6 | 12;
+  periodicidadMeses: number;
   orden: number;
-}[] = [
-  // Módulos / Paneles
-  { categoria: "paneles", nombre: "Limpieza de módulos", periodicidadMeses: 6, orden: 1 },
-  { categoria: "paneles", nombre: "Diferencias visuales frente a instalación original", periodicidadMeses: 6, orden: 2 },
-  { categoria: "paneles", nombre: "Revisión de bornes, conexiones y estado de los diodos", periodicidadMeses: 6, orden: 3 },
-  { categoria: "paneles", nombre: "Presencia de daños que afecten a la seguridad", periodicidadMeses: 12, orden: 4 },
-  { categoria: "paneles", nombre: "Deformaciones de los paneles", periodicidadMeses: 12, orden: 5 },
-
-  // Estructuras
-  { categoria: "estructura", nombre: "Revisión de degradación", periodicidadMeses: 12, orden: 6 },
-  { categoria: "estructura", nombre: "Revisión de corrosión", periodicidadMeses: 12, orden: 7 },
-  { categoria: "estructura", nombre: "Apriete de tornillos", periodicidadMeses: 12, orden: 8 },
-  { categoria: "estructura", nombre: "Revisión de los cimientos (en caso de tenerlos)", periodicidadMeses: 12, orden: 9 },
-  { categoria: "estructura", nombre: "Engrase / lubricación en caso de requerirlo", periodicidadMeses: 12, orden: 10 },
-
-  // Equipos electrónicos / Inversor
-  { categoria: "inversor", nombre: "Funcionamiento de indicadores, intensidad y caídas de tensión entre terminales", periodicidadMeses: 12, orden: 11 },
-  { categoria: "inversor", nombre: "Revisión de cableado y conexión", periodicidadMeses: 12, orden: 12 },
-  { categoria: "inversor", nombre: "Revisión de tensión, estado de indicadores y alarmas", periodicidadMeses: 12, orden: 13 },
-  { categoria: "inversor", nombre: "Revisión de funcionamiento de contadores y tolerancia de la medida", periodicidadMeses: 12, orden: 14 },
-  { categoria: "inversor", nombre: "Revisión de conexión de terminales", periodicidadMeses: 12, orden: 15 },
-  { categoria: "inversor", nombre: "Revisión de conexiones remotas, almacenamiento, registros, regulación y tolerancia de la medida", periodicidadMeses: 6, orden: 16 },
-  { categoria: "inversor", nombre: "Revisión de sistemas de monitorización y conexión WiFi", periodicidadMeses: 6, orden: 17 },
-
-  // Cuadros, cables, interruptores y protecciones
-  { categoria: "cuadros_protecciones", nombre: "Revisión de cableado: estanqueidad, protección y conexión de terminales, empalmes y platinas", periodicidadMeses: 12, orden: 18 },
-  { categoria: "cuadros_protecciones", nombre: "Revisión de caída de tensión CC", periodicidadMeses: 12, orden: 19 },
-  { categoria: "cuadros_protecciones", nombre: "Revisión de interruptores, funcionamiento y conexión de terminales", periodicidadMeses: 12, orden: 20 },
-  { categoria: "cuadros_protecciones", nombre: "Revisión de protecciones y actuación de seguridad: fusibles, tomas de tierra, interruptores de seguridad", periodicidadMeses: 12, orden: 21 },
-  { categoria: "cuadros_protecciones", nombre: "Revisión de uniones", periodicidadMeses: 12, orden: 22 },
-
-  // Acumulación / Baterías
-  { categoria: "baterias", nombre: "Valorar degradación y desgaste por cargas y descargas", periodicidadMeses: 12, orden: 23 },
-  { categoria: "baterias", nombre: "Revisión del BMS: nivel de carga, temperatura interna, vida útil restante del ciclo", periodicidadMeses: 12, orden: 24 },
-];
+}[] = JSON.parse(
+  readFileSync(new URL("./checklist-items.json", import.meta.url), "utf8")
+);
 
 async function seed() {
   console.log(`Sembrando ${ITEMS.length} puntos de checklist...`);

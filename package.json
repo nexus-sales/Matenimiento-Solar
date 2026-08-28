@@ -15,7 +15,8 @@
     "db:rls": "node scripts/aplicar-rls.mjs",
     "db:seed": "tsx src/db/seed.ts",
     "db:preparar": "node scripts/preparar-bd.mjs",
-    "db:password": "node scripts/reiniciar-password.mjs"
+    "db:password": "node scripts/reiniciar-password.mjs",
+    "db:esquema": "node scripts/aplicar-esquema.mjs"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

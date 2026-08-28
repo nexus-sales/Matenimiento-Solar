@@ -45,6 +45,7 @@ export async function GET(req: NextRequest) {
         fechaEjecucion: mantenimientos.fechaEjecucion,
         contactado: mantenimientos.contactado,
         firmado: mantenimientos.firmado,
+        anulada: mantenimientos.anulada,
         tipo: mantenimientos.tipo,
         cups: clientes.cups,
         isla: clientes.isla,

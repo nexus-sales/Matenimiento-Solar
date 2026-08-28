@@ -120,6 +120,19 @@ const e = StyleSheet.create({
   },
   imagenFirma: { height: 58, objectFit: "contain" },
 
+  /* Banda de anulada: va arriba y ocupa el ancho, no una marca de agua
+     diagonal. Una marca de agua se confunde con un fondo decorativo; una
+     banda roja al principio de cada pagina no se pasa por alto. */
+  bandaAnulada: {
+    backgroundColor: "#b3261e",
+    color: "#ffffff",
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    marginBottom: 10,
+  },
+  bandaTitulo: { fontSize: 11, fontFamily: "Helvetica-Bold", letterSpacing: 1 },
+  bandaTexto: { fontSize: 8, marginTop: 2 },
+
   pie: {
     position: "absolute",
     bottom: 24,
@@ -166,6 +179,9 @@ export type DatosInforme = {
     firmanteClienteNombre: string | null;
     firmanteClienteDocumento: string | null;
     firmadoEn: string | null;
+    anulada: boolean;
+    motivoAnulacion: string | null;
+    anuladaEn: string | null;
   };
   cliente: {
     nombre: string;
@@ -246,6 +262,16 @@ export function InformeMantenimiento({ datos }: { datos: DatosInforme }) {
       subject={`Visita ${visita.tipo} de ${fecha(visita.fechaEjecucion)}`}
     >
       <Page size="A4" style={e.pagina}>
+        {visita.anulada && (
+          <View style={e.bandaAnulada} fixed>
+            <Text style={e.bandaTitulo}>ACTA ANULADA — SIN VALIDEZ</Text>
+            <Text style={e.bandaTexto}>
+              Anulada el {fecha(visita.anuladaEn)}
+              {visita.motivoAnulacion ? `. ${visita.motivoAnulacion}` : "."}
+            </Text>
+          </View>
+        )}
+
         <View style={e.cabecera} fixed>
           <View>
             <Text style={e.marca}>SR Energía</Text>

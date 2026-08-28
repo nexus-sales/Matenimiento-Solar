@@ -236,8 +236,11 @@ export default async function AyudaPage() {
           aviso encima del botón dice cuál de las dos cosas es.
         </Pregunta>
         <Pregunta q="He firmado por error">
-          Una visita firmada no se puede reabrir: es lo que hace que el acta
-          valga como documento. Avisa a administración.
+          Avisa a administración. Una visita firmada no se puede reabrir ni
+          corregir —es lo que hace que el acta valga—, pero se puede{" "}
+          <strong>anular</strong> dejando escrito el motivo, y se programa otra
+          para el mismo cliente. El acta anulada se conserva con un sello, para
+          que no quede un hueco sin explicación en el histórico.
         </Pregunta>
         <Pregunta q="No veo una visita que sé que existe">
           Cada técnico ve solo las visitas que tiene asignadas. Si no aparece,

@@ -221,6 +221,9 @@ export async function GET(
       firmanteClienteNombre: visita.firmanteClienteNombre,
       firmanteClienteDocumento: visita.firmanteClienteDocumento,
       firmadoEn: visita.firmadoEn ? visita.firmadoEn.toISOString() : null,
+      anulada: visita.anulada,
+      motivoAnulacion: visita.motivoAnulacion,
+      anuladaEn: visita.anuladaEn ? visita.anuladaEn.toISOString() : null,
     },
     cliente: {
       nombre: cliente.nombre,

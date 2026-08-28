@@ -22,6 +22,13 @@
       "when": 1787936428315,
       "tag": "0002_documento_usuario",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1787944727233,
+      "tag": "0003_anulacion_visita",
+      "breakpoints": true
     }
   ]
 }

@@ -40,6 +40,7 @@ type Visita = {
   fechaEjecucion: string | null;
   contactado: boolean;
   firmado: boolean;
+  anulada: boolean;
   comentariosGenerales: string | null;
   tecnicoNombre: string | null;
 };
@@ -337,14 +338,18 @@ export default function ClienteDetallePage() {
                 </p>
                 <span
                   className={
-                    v.fechaEjecucion
-                      ? "shrink-0 rounded-full bg-acento-suave px-2 py-0.5 text-xs text-acento-contraste"
-                      : "shrink-0 rounded-full bg-superficie-fuerte px-2 py-0.5 text-xs text-suave"
+                    v.anulada
+                      ? "shrink-0 rounded-full bg-peligro-suave px-2 py-0.5 text-xs text-peligro-contraste"
+                      : v.fechaEjecucion
+                        ? "shrink-0 rounded-full bg-acento-suave px-2 py-0.5 text-xs text-acento-contraste"
+                        : "shrink-0 rounded-full bg-superficie-fuerte px-2 py-0.5 text-xs text-suave"
                   }
                 >
-                  {v.fechaEjecucion
-                    ? `Ejecutada ${fecha(v.fechaEjecucion)}`
-                    : "Pendiente"}
+                  {v.anulada
+                    ? "Anulada"
+                    : v.fechaEjecucion
+                      ? `Ejecutada ${fecha(v.fechaEjecucion)}`
+                      : "Pendiente"}
                 </span>
               </div>
               <p className="mt-0.5 text-xs text-suave">

@@ -153,6 +153,18 @@ export const mantenimientos = pgTable("mantenimientos", {
   firmado: boolean("firmado").notNull().default(false),
   firmadoEn: timestamp("firmado_en"),
 
+  // --- Anulación ---
+  // Una visita firmada nunca cambia de contenido. Si se firmó por error, se
+  // ANULA: se marca dejando constancia de quién y por qué, y se programa
+  // otra. El acta anulada sigue existiendo, con su sello, porque borrarla
+  // dejaría un hueco sin explicación en el histórico del cliente.
+  anulada: boolean("anulada").notNull().default(false),
+  anuladaEn: timestamp("anulada_en"),
+  anuladaPor: uuid("anulada_por").references(() => usuarios.id),
+  motivoAnulacion: text("motivo_anulacion"),
+  // La visita que la sustituye, para poder seguir el rastro.
+  sustituidaPor: uuid("sustituida_por"),
+
   creadoEn: timestamp("creado_en").notNull().defaultNow(),
 });
 

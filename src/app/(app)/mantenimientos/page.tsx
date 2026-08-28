@@ -11,6 +11,7 @@ type Visita = {
   fechaEjecucion: string | null;
   contactado: boolean;
   firmado: boolean;
+  anulada: boolean;
   cups: string;
   isla: string | null;
   clienteId: string;
@@ -129,7 +130,11 @@ function ListadoMantenimientos() {
               </div>
 
               <div className="shrink-0 text-right">
-                {visita.fechaEjecucion ? (
+                {visita.anulada ? (
+                  <span className="rounded-full bg-peligro-suave px-2 py-0.5 text-xs text-peligro-contraste">
+                    Anulada
+                  </span>
+                ) : visita.fechaEjecucion ? (
                   <span className="rounded-full bg-acento-suave px-2 py-0.5 text-xs text-acento-contraste">
                     Ejecutada {formatearFecha(visita.fechaEjecucion)}
                   </span>

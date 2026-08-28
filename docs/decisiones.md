@@ -410,3 +410,30 @@ pedirla otra vez.
 
 Los textos de la interfaz que dicen «isla» pasarían a decir «zona», salvo que
 se quiera mantener el término por despliegue.
+
+---
+
+## 2026-08-28 — Anular en vez de reabrir
+
+Si alguien firma una visita por error, hasta ahora la única salida era borrarla
+y perder el checklist.
+
+**Se anula, no se reabre.** La visita firmada se marca como anulada dejando
+escrito quién y por qué, y se programa otra que hereda cliente, tipo y técnico.
+Su acta pasa a llevar una banda roja de «ACTA ANULADA — SIN VALIDEZ».
+
+**Por qué no reabrir.** Retirar la firma y dejar la visita editable era más
+cómodo —no hay que rehacer el trabajo— pero rompe la única garantía que sostiene
+el documento: un acta que el cliente firmó podría acabar con un contenido
+distinto, y el PDF que ya recibió dejaría de coincidir con el archivado.
+
+**Por qué no borrar.** Dejaría un hueco sin explicación en el histórico del
+cliente, y el acta anulada quizá ya se le envió. Conservarla marcada es lo que
+permite entender después qué pasó.
+
+**Por qué solo administración.** Es una corrección sobre un documento firmado
+por dos partes, no una operación de trabajo diario.
+
+La banda va arriba y ocupa el ancho, no es una marca de agua diagonal: una marca
+de agua se confunde con un fondo decorativo, una banda roja al principio de cada
+página no se pasa por alto.

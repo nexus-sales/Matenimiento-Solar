@@ -38,6 +38,7 @@ export async function GET(
         fechaEjecucion: mantenimientos.fechaEjecucion,
         contactado: mantenimientos.contactado,
         firmado: mantenimientos.firmado,
+        anulada: mantenimientos.anulada,
         comentariosGenerales: mantenimientos.comentariosGenerales,
         tecnicoNombre: usuarios.nombre,
       })

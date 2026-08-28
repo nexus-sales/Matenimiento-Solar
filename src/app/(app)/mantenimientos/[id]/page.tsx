@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { leerErrorApi } from "@/lib/errores-api";
 import {
@@ -45,8 +45,15 @@ type Visita = {
   comentariosGenerales: string | null;
   equiposReemplazados: string | null;
   firmanteClienteNombre: string | null;
+  firmanteClienteDocumento: string | null;
   firmanteTecnicoNombre: string | null;
+  firmanteTecnicoDocumento: string | null;
+  firmaTecnico: string | null;
+  firmaCliente: string | null;
   numeroFactura: string | null;
+  anulada: boolean;
+  motivoAnulacion: string | null;
+  anuladaEn: string | null;
 };
 
 type Cliente = {
@@ -75,6 +82,7 @@ const ESTILO_ESTADO: Record<EstadoPunto, string> = {
 
 export default function VisitaPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
 
   const [visita, setVisita] = useState<Visita | null>(null);
   const [cliente, setCliente] = useState<Cliente | null>(null);
@@ -90,6 +98,11 @@ export default function VisitaPage() {
   const [asignando, setAsignando] = useState(false);
   const [factura, setFactura] = useState("");
   const [guardandoFactura, setGuardandoFactura] = useState(false);
+  const [puedeAnular, setPuedeAnular] = useState(false);
+  const [mostrarAnular, setMostrarAnular] = useState(false);
+  const [motivo, setMotivo] = useState("");
+  const [rehacer, setRehacer] = useState(true);
+  const [anulando, setAnulando] = useState(false);
   const [checklist, setChecklist] = useState<Fila[]>([]);
   const [obsBloque, setObsBloque] = useState<Record<string, string>>({});
   const [cargando, setCargando] = useState(true);
@@ -114,6 +127,7 @@ export default function VisitaPage() {
       setCliente(d.cliente);
       setTecnico(d.tecnico);
       setPuedeAsignar(Boolean(d.puedeAsignar));
+      setPuedeAnular(Boolean(d.puedeAnular));
 
       // Precarga de la firma con lo que ya sabemos: el técnico asignado y
       // los datos de la ficha del cliente. Teclear un DNI ajeno en un móvil
@@ -224,6 +238,34 @@ export default function VisitaPage() {
       return;
     }
     cargar();
+  }
+
+  /**
+   * Anular no borra ni edita: marca la visita y programa otra. El contenido
+   * del acta firmada no cambia nunca — solo pasa a llevar un sello.
+   */
+  async function anular() {
+    setAnulando(true);
+    setError(null);
+
+    const res = await fetch(`/api/mantenimientos/${id}/anular`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ motivo, rehacer }),
+    });
+
+    setAnulando(false);
+
+    if (!res.ok) {
+      setError(await leerErrorApi(res, "No se pudo anular la visita."));
+      return;
+    }
+
+    const { nueva } = await res.json();
+    // Si se programó la sustituta, se va directo a ella: es donde hay que
+    // seguir trabajando.
+    if (nueva?.id) router.push(`/mantenimientos/${nueva.id}`);
+    else cargar();
   }
 
   /** Reasignar es trabajo de oficina: el técnico no se asigna a sí mismo. */
@@ -534,6 +576,22 @@ export default function VisitaPage() {
         </section>
       ))}
 
+      {visita.anulada && (
+        <div className="mb-5 rounded-lg border border-peligro-borde bg-peligro-suave p-4">
+          <p className="text-sm font-semibold text-peligro-contraste">
+            Acta anulada — sin validez
+          </p>
+          <p className="mt-1 text-sm text-peligro-contraste">
+            Anulada el {fecha(visita.anuladaEn?.slice(0, 10) ?? null)}.
+            {visita.motivoAnulacion ? ` ${visita.motivoAnulacion}` : ""}
+          </p>
+          <p className="mt-1 text-xs text-peligro-contraste">
+            El acta se conserva con su sello: no se borra para no dejar un
+            hueco sin explicación en el histórico del cliente.
+          </p>
+        </div>
+      )}
+
       {puedeAsignar && (
         <div className="mb-5 rounded-lg border border-borde bg-superficie p-4">
           <label
@@ -572,10 +630,46 @@ export default function VisitaPage() {
             Conformidad
           </h2>
           <p className="text-suave">
-            Firmada el {fecha(visita.fechaEjecucion)} por{" "}
-            {visita.firmanteTecnicoNombre} (SR Energía) y{" "}
-            {visita.firmanteClienteNombre} (cliente).
+            Firmada el {fecha(visita.fechaEjecucion)}. No admite cambios.
           </p>
+
+          {/* Se enseñan los trazos, no solo los nombres: es lo que uno
+              espera comprobar de un acta, y prueba que se guardaron. El
+              fondo es blanco fijo porque la firma se dibujó en negro. */}
+          <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {[
+              {
+                titulo: "Por SR Energía",
+                firma: visita.firmaTecnico,
+                nombre: visita.firmanteTecnicoNombre,
+                documento: visita.firmanteTecnicoDocumento,
+              },
+              {
+                titulo: "Por el cliente",
+                firma: visita.firmaCliente,
+                nombre: visita.firmanteClienteNombre,
+                documento: visita.firmanteClienteDocumento,
+              },
+            ].map((f) => (
+              <div key={f.titulo}>
+                <p className="mb-1 text-xs text-tenue">{f.titulo}</p>
+                {f.firma ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={f.firma}
+                    alt={`Firma de ${f.nombre ?? "quien firmó"}`}
+                    className="h-24 w-full rounded border border-borde bg-white object-contain"
+                  />
+                ) : (
+                  <div className="flex h-24 items-center justify-center rounded border border-borde bg-superficie-alt text-xs text-tenue">
+                    Sin firma guardada
+                  </div>
+                )}
+                <p className="mt-1 text-sm text-texto">{f.nombre || "—"}</p>
+                <p className="text-xs text-suave">{f.documento || ""}</p>
+              </div>
+            ))}
+          </div>
 
           {/* El acta se abre en otra pestaña en vez de descargarse a la
               fuerza: así se puede revisar antes de reenviarla al cliente. */}
@@ -600,6 +694,60 @@ export default function VisitaPage() {
             </svg>
             Descargar acta en PDF
           </a>
+
+          {puedeAnular && !visita.anulada && (
+            <div className="mt-5 border-t border-borde pt-4">
+              {!mostrarAnular ? (
+                <button
+                  onClick={() => setMostrarAnular(true)}
+                  className="text-xs text-suave underline-offset-2 hover:text-peligro hover:underline"
+                >
+                  Se firmó por error — anular esta visita
+                </button>
+              ) : (
+                <div>
+                  <p className="text-sm font-medium text-texto">
+                    Anular la visita
+                  </p>
+                  <p className="mt-1 mb-2 text-xs text-suave">
+                    No se borra ni se edita: queda marcada con el motivo, y su
+                    acta pasa a llevar un sello de anulada. Si ya se la enviaste
+                    al cliente, conviene avisarle.
+                  </p>
+                  <textarea
+                    rows={2}
+                    value={motivo}
+                    onChange={(e) => setMotivo(e.target.value)}
+                    placeholder="Motivo — quedará escrito en el histórico"
+                    className="w-full rounded border border-borde-fuerte bg-superficie p-2 text-sm focus:border-acento focus:outline-none"
+                  />
+                  <label className="mt-2 flex items-center gap-2 text-sm text-medio">
+                    <input
+                      type="checkbox"
+                      checked={rehacer}
+                      onChange={(e) => setRehacer(e.target.checked)}
+                    />
+                    Programar una visita nueva para el mismo cliente
+                  </label>
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      onClick={anular}
+                      disabled={anulando || motivo.trim().length < 10}
+                      className="rounded border border-peligro-borde px-3 py-1.5 text-sm text-peligro hover:bg-peligro-suave disabled:opacity-40"
+                    >
+                      {anulando ? "Anulando…" : "Anular"}
+                    </button>
+                    <button
+                      onClick={() => setMostrarAnular(false)}
+                      className="rounded border border-borde-fuerte px-3 py-1.5 text-sm hover:bg-superficie-alt"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       ) : (
         <div className="rounded-lg border border-borde bg-superficie p-5">

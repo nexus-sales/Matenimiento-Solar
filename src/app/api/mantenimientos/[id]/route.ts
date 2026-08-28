@@ -129,6 +129,8 @@ export async function GET(
       checklist,
       observacionesBloque: observaciones,
       puedeAsignar,
+      // Anular es corrección sobre un documento firmado: solo administración.
+      puedeAnular: sesion.rol === "admin",
       tecnicos,
     };
   });

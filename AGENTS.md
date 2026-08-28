@@ -31,6 +31,11 @@ cd "/mnt/e/IA/Produccion/Clientes/Sr energia"
 npm install <paquete>
 ```
 
+Despues de traer un lock generado en WSL, en Windows hay que ejecutar
+**`npm ci`**, nunca `npm install`: `npm ci` instala exactamente lo que dice el
+lock y elige los binarios de la plataforma sin reescribirlo. `npm install`
+volveria a romperlo.
+
 Para editar codigo, VSCode en Windows es totalmente valido; esto solo aplica a
 `npm install` / `npm ci`.
 <!-- END:npm-install-rules -->

@@ -14,6 +14,7 @@ import {
   type EstadoPunto,
 } from "@/lib/checklist";
 import { Firma } from "./panel-firma";
+import { FotosPunto } from "./fotos-punto";
 
 type Item = {
   id: string;
@@ -29,7 +30,11 @@ type Respuesta = {
   observacion: string | null;
 } | null;
 
-type Fila = { item: Item; respuesta: Respuesta; fotos: { id: string; url: string }[] };
+type Fila = {
+  item: Item;
+  respuesta: Respuesta;
+  fotos: { id: string; pie: string | null }[];
+};
 
 type Visita = {
   id: string;
@@ -358,16 +363,13 @@ export default function VisitaPage() {
                       />
                     )}
 
-                    {/* La subida de fotos queda pendiente del almacenamiento
-                        S3-compatible: el modelo ya admite varias por punto. */}
-                    <button
-                      type="button"
-                      disabled
-                      title="Pendiente de conectar el almacenamiento de fotos"
-                      className="mt-2 rounded border border-borde px-2 py-1 text-xs text-tenue opacity-60"
-                    >
-                      + Foto ({fila.fotos.length})
-                    </button>
+                    <FotosPunto
+                      mantenimientoId={id}
+                      itemId={fila.item.id}
+                      fotos={fila.fotos}
+                      bloqueado={visita.firmado}
+                      onCambio={cargar}
+                    />
                   </div>
                 );
               })}

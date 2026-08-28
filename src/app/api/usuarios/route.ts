@@ -6,12 +6,23 @@ import { obtenerSesion } from "@/lib/auth";
 import { hashPassword } from "@/lib/password";
 import { exigirAdmin } from "@/lib/permisos";
 import { campoIsla } from "@/lib/esquemas";
+import { validarDocumento } from "@/lib/validacion";
 
 const esquemaUsuario = z.object({
   nombre: z.string().min(1, "El nombre es obligatorio.").max(200),
   email: z.string().email(),
   password: z.string().min(8, "Mínimo 8 caracteres."),
   rol: z.enum(["admin", "oficina", "tecnico"]),
+  // Opcional, pero si viene tiene que ser un documento real: aparece en
+  // las actas firmadas.
+  documento: z
+    .union([
+      z.string().transform((v) => v.trim().toUpperCase()).refine(validarDocumento, "Documento inválido."),
+      z.literal(""),
+      z.null(),
+    ])
+    .optional()
+    .transform((v) => v || null),
   isla: campoIsla,
 });
 
@@ -31,6 +42,7 @@ export async function GET() {
         nombre: usuarios.nombre,
         email: usuarios.email,
         rol: usuarios.rol,
+        documento: usuarios.documento,
         isla: usuarios.isla,
         activo: usuarios.activo,
         creadoEn: usuarios.creadoEn,
@@ -79,6 +91,7 @@ export async function POST(req: NextRequest) {
           email: d.email,
           passwordHash,
           rol: d.rol,
+          documento: d.documento,
           isla: d.rol === "tecnico" ? d.isla || null : null,
         })
         .returning({
@@ -86,7 +99,8 @@ export async function POST(req: NextRequest) {
           nombre: usuarios.nombre,
           email: usuarios.email,
           rol: usuarios.rol,
-          isla: usuarios.isla,
+          documento: usuarios.documento,
+        isla: usuarios.isla,
           activo: usuarios.activo,
         })
     );

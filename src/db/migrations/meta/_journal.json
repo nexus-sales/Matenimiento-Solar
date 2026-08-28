@@ -15,6 +15,13 @@
       "when": 1787919165219,
       "tag": "0001_poblacion_cliente",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787936428315,
+      "tag": "0002_documento_usuario",
+      "breakpoints": true
     }
   ]
 }

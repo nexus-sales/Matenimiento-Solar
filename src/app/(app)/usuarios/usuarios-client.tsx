@@ -8,6 +8,7 @@ type Usuario = {
   id: string;
   nombre: string;
   email: string;
+  documento: string | null;
   rol: "admin" | "oficina" | "tecnico";
   isla: string | null;
   activo: boolean;
@@ -29,6 +30,7 @@ export default function UsuariosClient() {
   const [form, setForm] = useState({
     nombre: "",
     email: "",
+    documento: "",
     password: "",
     rol: "tecnico" as Usuario["rol"],
     isla: "",
@@ -56,6 +58,7 @@ export default function UsuariosClient() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...form,
+        documento: form.documento || null,
         isla: form.rol === "tecnico" ? form.isla || null : null,
       }),
     });
@@ -67,7 +70,14 @@ export default function UsuariosClient() {
       return;
     }
 
-    setForm({ nombre: "", email: "", password: "", rol: "tecnico", isla: "" });
+    setForm({
+      nombre: "",
+      email: "",
+      documento: "",
+      password: "",
+      rol: "tecnico",
+      isla: "",
+    });
     setMostrarForm(false);
     cargar();
   }
@@ -126,6 +136,20 @@ export default function UsuariosClient() {
                 type="email"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
+                className="w-full rounded border border-borde-fuerte bg-superficie p-2 text-sm focus:border-acento focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-suave mb-1">
+                Documento
+              </label>
+              <input
+                value={form.documento}
+                onChange={(e) =>
+                  setForm({ ...form, documento: e.target.value.toUpperCase() })
+                }
+                placeholder="NIF, NIE o CIF"
+                title="Aparece en las actas que firma este usuario"
                 className="w-full rounded border border-borde-fuerte bg-superficie p-2 text-sm focus:border-acento focus:outline-none"
               />
             </div>
@@ -201,7 +225,9 @@ export default function UsuariosClient() {
                   )}
                 </p>
                 <p className="text-xs text-suave">
-                  {u.email} · {ROL_LABEL[u.rol]}
+                  {[u.email, u.documento, ROL_LABEL[u.rol]]
+                    .filter(Boolean)
+                    .join(" · ")}
                   {u.isla ? ` · ${u.isla}` : ""}
                 </p>
               </div>

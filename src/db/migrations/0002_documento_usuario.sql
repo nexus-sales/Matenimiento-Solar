@@ -1,0 +1,1 @@
+ALTER TABLE "usuarios" ADD COLUMN "documento" text;

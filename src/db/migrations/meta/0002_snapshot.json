@@ -1,0 +1,801 @@
+{
+  "id": "0ee4c641-7b55-46f6-9cde-a69fbcf68195",
+  "prevId": "8ee90529-5de3-4559-bbaf-57680f6b6a5b",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.checklist_item_definicion": {
+      "name": "checklist_item_definicion",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "plantilla": {
+          "name": "plantilla",
+          "type": "plantilla",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'mantenimiento'"
+        },
+        "categoria": {
+          "name": "categoria",
+          "type": "categoria_checklist",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nombre": {
+          "name": "nombre",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "periodicidad_meses": {
+          "name": "periodicidad_meses",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "orden": {
+          "name": "orden",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "activo": {
+          "name": "activo",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.clientes": {
+      "name": "clientes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "fecha_alta": {
+          "name": "fecha_alta",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_DATE"
+        },
+        "nombre": {
+          "name": "nombre",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "documento": {
+          "name": "documento",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "direccion": {
+          "name": "direccion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "poblacion": {
+          "name": "poblacion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "codigo_postal": {
+          "name": "codigo_postal",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "isla": {
+          "name": "isla",
+          "type": "isla",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "provincia": {
+          "name": "provincia",
+          "type": "provincia",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "telefono": {
+          "name": "telefono",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cups": {
+          "name": "cups",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "potencia_contratada": {
+          "name": "potencia_contratada",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "potencia_nominal": {
+          "name": "potencia_nominal",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "marca_inversor": {
+          "name": "marca_inversor",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "numero_inversor": {
+          "name": "numero_inversor",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "comercializadora": {
+          "name": "comercializadora",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tiene_bateria": {
+          "name": "tiene_bateria",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "tiene_mantenimiento": {
+          "name": "tiene_mantenimiento",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "comentarios": {
+          "name": "comentarios",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "clientes_documento_unique": {
+          "name": "clientes_documento_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "documento"
+          ]
+        },
+        "clientes_cups_unique": {
+          "name": "clientes_cups_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "cups"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.mantenimiento_checklist_respuesta": {
+      "name": "mantenimiento_checklist_respuesta",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "mantenimiento_id": {
+          "name": "mantenimiento_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "item_id": {
+          "name": "item_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "estado": {
+          "name": "estado",
+          "type": "estado_punto",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'sin_revisar'"
+        },
+        "observacion": {
+          "name": "observacion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "unico_item_por_visita": {
+          "name": "unico_item_por_visita",
+          "columns": [
+            {
+              "expression": "mantenimiento_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "item_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "mantenimiento_checklist_respuesta_mantenimiento_id_mantenimientos_id_fk": {
+          "name": "mantenimiento_checklist_respuesta_mantenimiento_id_mantenimientos_id_fk",
+          "tableFrom": "mantenimiento_checklist_respuesta",
+          "tableTo": "mantenimientos",
+          "columnsFrom": [
+            "mantenimiento_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "mantenimiento_checklist_respuesta_item_id_checklist_item_definicion_id_fk": {
+          "name": "mantenimiento_checklist_respuesta_item_id_checklist_item_definicion_id_fk",
+          "tableFrom": "mantenimiento_checklist_respuesta",
+          "tableTo": "checklist_item_definicion",
+          "columnsFrom": [
+            "item_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.mantenimiento_observacion_bloque": {
+      "name": "mantenimiento_observacion_bloque",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "mantenimiento_id": {
+          "name": "mantenimiento_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "categoria": {
+          "name": "categoria",
+          "type": "categoria_checklist",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "observacion": {
+          "name": "observacion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "unico_bloque_por_visita": {
+          "name": "unico_bloque_por_visita",
+          "columns": [
+            {
+              "expression": "mantenimiento_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "categoria",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "mantenimiento_observacion_bloque_mantenimiento_id_mantenimientos_id_fk": {
+          "name": "mantenimiento_observacion_bloque_mantenimiento_id_mantenimientos_id_fk",
+          "tableFrom": "mantenimiento_observacion_bloque",
+          "tableTo": "mantenimientos",
+          "columnsFrom": [
+            "mantenimiento_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.mantenimientos": {
+      "name": "mantenimientos",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "cliente_id": {
+          "name": "cliente_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tecnico_id": {
+          "name": "tecnico_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tipo": {
+          "name": "tipo",
+          "type": "tipo_visita",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'anual'"
+        },
+        "fecha_prevista": {
+          "name": "fecha_prevista",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fecha_ejecucion": {
+          "name": "fecha_ejecucion",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "contactado": {
+          "name": "contactado",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "fecha_contacto": {
+          "name": "fecha_contacto",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "via_whatsapp": {
+          "name": "via_whatsapp",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "numero_factura": {
+          "name": "numero_factura",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "comentarios_generales": {
+          "name": "comentarios_generales",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "equipos_reemplazados": {
+          "name": "equipos_reemplazados",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "firma_tecnico": {
+          "name": "firma_tecnico",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "firmante_tecnico_nombre": {
+          "name": "firmante_tecnico_nombre",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "firmante_tecnico_documento": {
+          "name": "firmante_tecnico_documento",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "firma_cliente": {
+          "name": "firma_cliente",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "firmante_cliente_nombre": {
+          "name": "firmante_cliente_nombre",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "firmante_cliente_documento": {
+          "name": "firmante_cliente_documento",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "firmado": {
+          "name": "firmado",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "firmado_en": {
+          "name": "firmado_en",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "mantenimientos_cliente_id_clientes_id_fk": {
+          "name": "mantenimientos_cliente_id_clientes_id_fk",
+          "tableFrom": "mantenimientos",
+          "tableTo": "clientes",
+          "columnsFrom": [
+            "cliente_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "mantenimientos_tecnico_id_usuarios_id_fk": {
+          "name": "mantenimientos_tecnico_id_usuarios_id_fk",
+          "tableFrom": "mantenimientos",
+          "tableTo": "usuarios",
+          "columnsFrom": [
+            "tecnico_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.respuesta_foto": {
+      "name": "respuesta_foto",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "respuesta_id": {
+          "name": "respuesta_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "url": {
+          "name": "url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pie": {
+          "name": "pie",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "orden": {
+          "name": "orden",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "respuesta_foto_respuesta_id_mantenimiento_checklist_respuesta_id_fk": {
+          "name": "respuesta_foto_respuesta_id_mantenimiento_checklist_respuesta_id_fk",
+          "tableFrom": "respuesta_foto",
+          "tableTo": "mantenimiento_checklist_respuesta",
+          "columnsFrom": [
+            "respuesta_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.usuarios": {
+      "name": "usuarios",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "nombre": {
+          "name": "nombre",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "password_hash": {
+          "name": "password_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "documento": {
+          "name": "documento",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rol": {
+          "name": "rol",
+          "type": "rol_usuario",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'tecnico'"
+        },
+        "isla": {
+          "name": "isla",
+          "type": "isla",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "activo": {
+          "name": "activo",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "usuarios_email_unique": {
+          "name": "usuarios_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.categoria_checklist": {
+      "name": "categoria_checklist",
+      "schema": "public",
+      "values": [
+        "paneles",
+        "estructura",
+        "inversor",
+        "cuadros_protecciones",
+        "baterias"
+      ]
+    },
+    "public.estado_punto": {
+      "name": "estado_punto",
+      "schema": "public",
+      "values": [
+        "sin_revisar",
+        "correcto",
+        "incidencia",
+        "no_aplica"
+      ]
+    },
+    "public.isla": {
+      "name": "isla",
+      "schema": "public",
+      "values": [
+        "Tenerife",
+        "Gran Canaria",
+        "Lanzarote",
+        "Fuerteventura",
+        "La Palma",
+        "La Gomera",
+        "El Hierro",
+        "La Graciosa"
+      ]
+    },
+    "public.plantilla": {
+      "name": "plantilla",
+      "schema": "public",
+      "values": [
+        "mantenimiento",
+        "visita_previa",
+        "acta_obra"
+      ]
+    },
+    "public.provincia": {
+      "name": "provincia",
+      "schema": "public",
+      "values": [
+        "Las Palmas",
+        "Santa Cruz de Tenerife"
+      ]
+    },
+    "public.rol_usuario": {
+      "name": "rol_usuario",
+      "schema": "public",
+      "values": [
+        "admin",
+        "oficina",
+        "tecnico"
+      ]
+    },
+    "public.tipo_visita": {
+      "name": "tipo_visita",
+      "schema": "public",
+      "values": [
+        "semestral",
+        "anual"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

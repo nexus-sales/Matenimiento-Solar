@@ -68,6 +68,10 @@ export const usuarios = pgTable("usuarios", {
   nombre: text("nombre").notNull(),
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
+  // NIF/NIE/CIF. Se guarda porque el técnico firma cada visita y su
+  // documento aparece en el acta: sin esto tendría que teclearlo en cada
+  // una, siempre el mismo, en un móvil y subido a una cubierta.
+  documento: text("documento"),
   rol: rolEnum("rol").notNull().default("tecnico"),
   isla: islaEnum("isla"), // solo aplica a técnicos
   activo: boolean("activo").notNull().default(true),

@@ -45,7 +45,11 @@ export async function GET(
 
     const [tecnico] = visita.tecnicoId
       ? await tx
-          .select({ id: usuarios.id, nombre: usuarios.nombre })
+          .select({
+            id: usuarios.id,
+            nombre: usuarios.nombre,
+            documento: usuarios.documento,
+          })
           .from(usuarios)
           .where(eq(usuarios.id, visita.tecnicoId))
           .limit(1)

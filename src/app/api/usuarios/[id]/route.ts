@@ -7,10 +7,21 @@ import { obtenerSesion } from "@/lib/auth";
 import { hashPassword } from "@/lib/password";
 import { exigirAdmin } from "@/lib/permisos";
 import { campoIsla } from "@/lib/esquemas";
+import { validarDocumento } from "@/lib/validacion";
 
 const esquemaActualizar = z.object({
   nombre: z.string().min(1).optional(),
   rol: z.enum(["admin", "oficina", "tecnico"]).optional(),
+  // Opcional, pero si viene tiene que ser un documento real: aparece en
+  // las actas firmadas.
+  documento: z
+    .union([
+      z.string().transform((v) => v.trim().toUpperCase()).refine(validarDocumento, "Documento inválido."),
+      z.literal(""),
+      z.null(),
+    ])
+    .optional()
+    .transform((v) => v || null),
   isla: campoIsla,
   activo: z.boolean().optional(),
   password: z.string().min(8).optional(), // opcional: solo si se resetea
@@ -70,6 +81,7 @@ async function aplicarCambios(
   if (d.nombre !== undefined) cambios.nombre = d.nombre;
   if (d.rol !== undefined) cambios.rol = d.rol;
   if (d.isla !== undefined) cambios.isla = d.isla || null;
+  if (d.documento !== undefined) cambios.documento = d.documento;
   if (d.activo !== undefined) cambios.activo = d.activo;
   if (d.password) cambios.passwordHash = await hashPassword(d.password);
 
@@ -83,6 +95,7 @@ async function aplicarCambios(
         nombre: usuarios.nombre,
         email: usuarios.email,
         rol: usuarios.rol,
+        documento: usuarios.documento,
         isla: usuarios.isla,
         activo: usuarios.activo,
       })

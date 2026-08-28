@@ -51,6 +51,7 @@ type Visita = {
 type Cliente = {
   id: string;
   nombre: string;
+  documento: string;
   direccion: string | null;
   poblacion: string | null;
   codigoPostal: string | null;
@@ -76,9 +77,11 @@ export default function VisitaPage() {
 
   const [visita, setVisita] = useState<Visita | null>(null);
   const [cliente, setCliente] = useState<Cliente | null>(null);
-  const [tecnico, setTecnico] = useState<{ id: string; nombre: string } | null>(
-    null
-  );
+  const [tecnico, setTecnico] = useState<{
+    id: string;
+    nombre: string;
+    documento: string | null;
+  } | null>(null);
   const [puedeAsignar, setPuedeAsignar] = useState(false);
   const [tecnicos, setTecnicos] = useState<
     { id: string; nombre: string; isla: string | null }[]
@@ -108,6 +111,23 @@ export default function VisitaPage() {
       setCliente(d.cliente);
       setTecnico(d.tecnico);
       setPuedeAsignar(Boolean(d.puedeAsignar));
+
+      // Precarga de la firma con lo que ya sabemos: el técnico asignado y
+      // los datos de la ficha del cliente. Teclear un DNI ajeno en un móvil
+      // subido a una cubierta es donde se cometen los errores, y la
+      // validación con letra de control es estricta.
+      //
+      // Solo se rellena lo que esté vacío: si el usuario ya ha escrito algo
+      // —porque firma otra persona, un familiar o el administrador de la
+      // finca— no se le pisa.
+      setDatosFirma((previo) => ({
+        tecnicoNombre: previo.tecnicoNombre || (d.tecnico?.nombre ?? ""),
+        tecnicoDocumento:
+          previo.tecnicoDocumento || (d.tecnico?.documento ?? ""),
+        clienteNombre: previo.clienteNombre || (d.cliente?.nombre ?? ""),
+        clienteDocumento:
+          previo.clienteDocumento || (d.cliente?.documento ?? ""),
+      }));
       setTecnicos(d.tecnicos ?? []);
       setChecklist(d.checklist);
       setObsBloque(
@@ -497,6 +517,7 @@ export default function VisitaPage() {
 
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <div className="space-y-2">
+              <p className="text-xs text-tenue">Técnico</p>
               <input
                 placeholder="Nombre del técnico"
                 value={datosFirma.tecnicoNombre}
@@ -524,8 +545,11 @@ export default function VisitaPage() {
             </div>
 
             <div className="space-y-2">
+              <p className="text-xs text-tenue">
+                Cliente — cámbialo si firma otra persona
+              </p>
               <input
-                placeholder="Nombre del cliente"
+                placeholder="Nombre de quien firma"
                 value={datosFirma.clienteNombre}
                 onChange={(e) =>
                   setDatosFirma({ ...datosFirma, clienteNombre: e.target.value })
@@ -533,7 +557,7 @@ export default function VisitaPage() {
                 className="w-full rounded border border-borde-fuerte bg-superficie p-2 text-sm focus:border-acento focus:outline-none"
               />
               <input
-                placeholder="DNI del cliente"
+                placeholder="Documento de quien firma"
                 value={datosFirma.clienteDocumento}
                 onChange={(e) =>
                   setDatosFirma({

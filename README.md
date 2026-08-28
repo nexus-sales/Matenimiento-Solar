@@ -270,10 +270,14 @@ Nota sobre un bloque entero. Índice único `unico_bloque_por_visita` sobre
 Varias fotos por punto: `url`, `pie`, `orden`. La URL apunta al almacenamiento
 de objetos, con la imagen ya comprimida en el móvil antes de subirla.
 
-### `usuarios` — 8 columnas
+### `usuarios` — 9 columnas
 
-`nombre`, `email` **único**, `password_hash`, `rol`, `isla` (solo técnicos),
-`activo`.
+`nombre`, `email` **único**, `documento`, `password_hash`, `rol`,
+`isla` (solo técnicos), `activo`.
+
+El `documento` se guarda porque el técnico firma cada visita y aparece en el
+acta: sin él tendría que teclear el suyo en cada una, siempre el mismo, en un
+móvil y subido a una cubierta.
 
 Las bajas **desactivan**, no borran: se conserva el histórico de qué técnico
 hizo cada visita.

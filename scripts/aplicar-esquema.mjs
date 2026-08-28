@@ -199,6 +199,19 @@ try {
     readFileSync(path.join("src", "db", "checklist-items.json"), "utf8")
   );
 
+  // Simulando sobre una base vacía, las tablas no existen todavía: no se
+  // las puede consultar. En la ejecución real sí existen, porque el paso 1
+  // ya las ha creado.
+  if (SIMULAR && t.n === 0) {
+    aviso(`Se sembrarían ${items.length} puntos de checklist`);
+    aviso("Se crearía el primer administrador");
+    console.log("");
+    console.log("Simulación terminada. Nada se ha modificado.");
+    console.log("");
+    await cliente.end();
+    process.exit(0);
+  }
+
   const { rows: [c] } = await cliente.query(
     "select count(*)::int n from checklist_item_definicion"
   );

@@ -140,6 +140,15 @@ try {
     process.exit(1);
   }
 
+  // El orden importa: hay que mirar si el registro EXISTE antes de crearlo.
+  // Al revés, se encuentra recién creado y vacío, se concluye que no hay
+  // nada aplicado, y se intenta rehacer el esquema sobre una base que ya lo
+  // tiene. Es el fallo que rompió el primer intento en el servidor.
+  const { rows: registroPrevio } = await cliente.query(
+    "select 1 from pg_tables where schemaname='public' and tablename='_migraciones'"
+  );
+  const habiaRegistro = registroPrevio.length > 0;
+
   if (!SIMULAR) {
     await cliente.query(`
       CREATE TABLE IF NOT EXISTS _migraciones (
@@ -150,19 +159,23 @@ try {
   }
 
   let aplicadas = new Set();
-  const { rows: existeRegistro } = await cliente.query(
-    "select 1 from pg_tables where schemaname='public' and tablename='_migraciones'"
-  );
-  if (existeRegistro.length) {
+  if (habiaRegistro) {
     const { rows } = await cliente.query("select nombre from _migraciones");
     aplicadas = new Set(rows.map((r) => r.nombre));
   } else if (t.n > 0) {
     // Base creada antes de que existiera el registro: la primera migración
-    // ya está dentro, aunque no conste. Se da por aplicada para no intentar
-    // crear unas tablas que ya existen.
+    // ya está dentro aunque no conste. Se da por aplicada y se anota, para
+    // que la próxima vez no haya que deducirlo.
     aplicadas = new Set([migraciones[0].nombre]);
     aviso(`Base preexistente: se da por aplicada ${migraciones[0].nombre}`);
+    if (!SIMULAR) {
+      await cliente.query(
+        "insert into _migraciones (nombre) values ($1) on conflict do nothing",
+        [migraciones[0].nombre]
+      );
+    }
   }
+
 
   const pendientes = migraciones.filter((m) => !aplicadas.has(m.nombre));
 
@@ -172,16 +185,32 @@ try {
     for (const m of pendientes) aviso(`Se aplicaría ${m.nombre}`);
   } else {
     for (const m of pendientes) {
-      // Drizzle separa las sentencias con este marcador.
+      // Cada migración va en su propia transacción. Sin esto, si una
+      // sentencia falla a mitad quedan las anteriores aplicadas y nada
+      // registrado: la base en un estado que no es ni el viejo ni el nuevo,
+      // y el script sin forma de saberlo en la siguiente ejecución.
+      // PostgreSQL admite DDL transaccional, así que esto funciona de verdad.
       const sentencias = m.sql
         .split("--> statement-breakpoint")
         .map((s) => s.trim())
         .filter(Boolean);
-      for (const s of sentencias) await cliente.query(s);
-      await cliente.query(
-        "insert into _migraciones (nombre) values ($1) on conflict do nothing",
-        [m.nombre]
-      );
+
+      await cliente.query("BEGIN");
+      try {
+        for (const s of sentencias) await cliente.query(s);
+        await cliente.query(
+          "insert into _migraciones (nombre) values ($1) on conflict do nothing",
+          [m.nombre]
+        );
+        await cliente.query("COMMIT");
+      } catch (err) {
+        await cliente.query("ROLLBACK");
+        console.error("");
+        console.error(`Falló ${m.nombre}: ${err.message}`);
+        console.error("Se ha deshecho por completo. La base queda como estaba.");
+        console.error("");
+        process.exit(1);
+      }
       ok(`${m.nombre} — ${sentencias.length} sentencias`);
     }
   }

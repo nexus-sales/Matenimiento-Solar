@@ -8,11 +8,7 @@ import {
 } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { obtenerSesion } from "@/lib/auth";
-import {
-  esquemaCategoria,
-  esquemaEstadoPunto,
-  incidenciaNecesitaObservacion,
-} from "@/lib/checklist";
+import { esquemaCategoria, esquemaEstadoPunto } from "@/lib/checklist";
 
 const esquemaRespuesta = z.object({
   itemId: z.string().uuid(),
@@ -60,15 +56,14 @@ export async function PUT(
   const { itemId, estado, observacion } = parseo.data;
   const texto = observacion?.trim() || null;
 
-  if (incidenciaNecesitaObservacion(estado, texto)) {
-    return NextResponse.json(
-      {
-        error:
-          "Una incidencia tiene que llevar observación: explica qué has encontrado.",
-      },
-      { status: 400 }
-    );
-  }
+  // AQUÍ NO se exige la observación de una incidencia, aunque parezca lo
+  // lógico. El técnico marca "incidencia" y DESPUÉS escribe lo que ha visto:
+  // rechazar el primer paso hacía imposible llegar al segundo, porque el
+  // cuadro de texto solo aparece una vez marcada la incidencia.
+  //
+  // La exigencia vive donde importa: al firmar (ver .../firma/route.ts). Un
+  // punto a medias mientras se trabaja es normal; un acta firmada con una
+  // incidencia sin explicar, no.
 
   const guardado = await conSesionRLS(sesion, async (tx) => {
     // Una visita ya firmada no se retoca: el informe firmado por el cliente

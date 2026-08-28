@@ -276,7 +276,17 @@ export default function VisitaPage() {
   const incidencias = checklist.filter(
     (f) => f.respuesta?.estado === "incidencia"
   ).length;
-  const completo = revisados === checklist.length && checklist.length > 0;
+  // Sin explicar: el servidor las rechaza al firmar, así que se avisa antes
+  // en vez de dejar que el técnico lo descubra con el cliente delante.
+  const incidenciasSinExplicar = checklist.filter(
+    (f) =>
+      f.respuesta?.estado === "incidencia" && !f.respuesta.observacion?.trim()
+  ).length;
+
+  const completo =
+    revisados === checklist.length &&
+    checklist.length > 0 &&
+    incidenciasSinExplicar === 0;
 
   const categoriasVisibles = CATEGORIAS.filter((c) =>
     checklist.some((f) => f.item.categoria === c)
@@ -445,22 +455,31 @@ export default function VisitaPage() {
 
                     {(estado === "incidencia" ||
                       fila.respuesta?.observacion) && (
-                      <textarea
-                        rows={2}
-                        disabled={visita.firmado}
-                        defaultValue={fila.respuesta?.observacion ?? ""}
-                        placeholder={
-                          estado === "incidencia"
-                            ? "Obligatorio: qué has encontrado"
-                            : "Observación"
-                        }
-                        onBlur={(e) =>
-                          guardarPunto(fila, {
-                            observacion: e.target.value || null,
-                          })
-                        }
-                        className="mt-2 w-full rounded border border-borde-fuerte bg-superficie p-2 text-sm focus:border-acento focus:outline-none"
-                      />
+                      <>
+                        <textarea
+                          rows={2}
+                          disabled={visita.firmado}
+                          defaultValue={fila.respuesta?.observacion ?? ""}
+                          placeholder={
+                            estado === "incidencia"
+                              ? "Qué has encontrado"
+                              : "Observación"
+                          }
+                          onBlur={(e) =>
+                            guardarPunto(fila, {
+                              observacion: e.target.value || null,
+                            })
+                          }
+                          className="mt-2 w-full rounded border border-borde-fuerte bg-superficie p-2 text-sm focus:border-acento focus:outline-none"
+                        />
+                        {estado === "incidencia" &&
+                          !fila.respuesta?.observacion?.trim() && (
+                            <p className="mt-1 text-xs text-aviso-contraste">
+                              Explica la incidencia: sin esto no se puede
+                              firmar la visita.
+                            </p>
+                          )}
+                      </>
                     )}
 
                     <FotosPunto
@@ -510,8 +529,9 @@ export default function VisitaPage() {
 
           {!completo && (
             <p className="mb-4 rounded-md border border-borde bg-superficie-alt p-3 text-sm text-suave">
-              Faltan {checklist.length - revisados} punto(s) por revisar antes
-              de poder firmar.
+              {revisados < checklist.length
+                ? `Faltan ${checklist.length - revisados} punto(s) por revisar antes de poder firmar.`
+                : `Hay ${incidenciasSinExplicar} incidencia(s) sin explicar. Añade la observación antes de firmar.`}
             </p>
           )}
 

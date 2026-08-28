@@ -10,7 +10,7 @@ import {
   respuestaFoto,
   usuarios,
 } from "@/db/schema";
-import { asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { obtenerSesion } from "@/lib/auth";
 import { exigirRolEscritura } from "@/lib/permisos";
 import { esquemaTipoVisita, itemAplicaAVisita } from "@/lib/checklist";
@@ -100,12 +100,31 @@ export async function GET(
         };
       });
 
+    // La lista de técnicos viaja con la visita, y solo para quien puede
+    // asignar. Pedirla aparte no valdría: /api/usuarios es exclusivo de
+    // admin, y oficina también necesita reasignar.
+    const puedeAsignar = sesion.rol === "admin" || sesion.rol === "oficina";
+
+    const tecnicos = puedeAsignar
+      ? await tx
+          .select({
+            id: usuarios.id,
+            nombre: usuarios.nombre,
+            isla: usuarios.isla,
+          })
+          .from(usuarios)
+          .where(and(eq(usuarios.rol, "tecnico"), eq(usuarios.activo, true)))
+          .orderBy(asc(usuarios.nombre))
+      : [];
+
     return {
       visita,
       cliente,
       tecnico: tecnico ?? null,
       checklist,
       observacionesBloque: observaciones,
+      puedeAsignar,
+      tecnicos,
     };
   });
 
@@ -186,6 +205,25 @@ export async function PUT(
         error: "La visita ya está firmada y no admite cambios.",
         estado: 409,
       };
+    }
+
+    // La clave foránea solo garantiza que el usuario exista. Sin esta
+    // comprobación se podría asignar una visita a alguien de oficina, o a un
+    // técnico dado de baja — y entonces la visita no aparecería en la lista
+    // de nadie, sin que nada avisara.
+    if (cambios.tecnicoId) {
+      const [tec] = await tx
+        .select({ rol: usuarios.rol, activo: usuarios.activo })
+        .from(usuarios)
+        .where(eq(usuarios.id, cambios.tecnicoId))
+        .limit(1);
+
+      if (!tec || tec.rol !== "tecnico" || !tec.activo) {
+        return {
+          error: "El técnico asignado no existe o no está activo.",
+          estado: 400,
+        };
+      }
     }
 
     const [fila] = await tx

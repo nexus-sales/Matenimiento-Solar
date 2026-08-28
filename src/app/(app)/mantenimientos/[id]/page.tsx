@@ -76,7 +76,14 @@ export default function VisitaPage() {
 
   const [visita, setVisita] = useState<Visita | null>(null);
   const [cliente, setCliente] = useState<Cliente | null>(null);
-  const [tecnico, setTecnico] = useState<{ nombre: string } | null>(null);
+  const [tecnico, setTecnico] = useState<{ id: string; nombre: string } | null>(
+    null
+  );
+  const [puedeAsignar, setPuedeAsignar] = useState(false);
+  const [tecnicos, setTecnicos] = useState<
+    { id: string; nombre: string; isla: string | null }[]
+  >([]);
+  const [asignando, setAsignando] = useState(false);
   const [checklist, setChecklist] = useState<Fila[]>([]);
   const [obsBloque, setObsBloque] = useState<Record<string, string>>({});
   const [cargando, setCargando] = useState(true);
@@ -100,6 +107,8 @@ export default function VisitaPage() {
       setVisita(d.visita);
       setCliente(d.cliente);
       setTecnico(d.tecnico);
+      setPuedeAsignar(Boolean(d.puedeAsignar));
+      setTecnicos(d.tecnicos ?? []);
       setChecklist(d.checklist);
       setObsBloque(
         Object.fromEntries(
@@ -168,6 +177,26 @@ export default function VisitaPage() {
     if (!res.ok) {
       setError(await leerErrorApi(res, "No se pudo guardar la observación."));
     }
+  }
+
+  /** Reasignar es trabajo de oficina: el técnico no se asigna a sí mismo. */
+  async function asignarTecnico(tecnicoId: string) {
+    setAsignando(true);
+    setError(null);
+
+    const res = await fetch(`/api/mantenimientos/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tecnicoId: tecnicoId || null }),
+    });
+
+    setAsignando(false);
+
+    if (!res.ok) {
+      setError(await leerErrorApi(res, "No se pudo asignar el técnico."));
+      return;
+    }
+    cargar();
   }
 
   async function firmar() {
@@ -249,7 +278,8 @@ export default function VisitaPage() {
           <p className="mt-0.5 text-sm text-suave">
             Visita {NOMBRE_TIPO_VISITA[visita.tipo].toLowerCase()} · prevista{" "}
             {fecha(visita.fechaPrevista)}
-            {tecnico ? ` · ${tecnico.nombre}` : " · sin técnico asignado"}
+            {!puedeAsignar &&
+              (tecnico ? ` · ${tecnico.nombre}` : " · sin técnico asignado")}
           </p>
         </div>
         {visita.firmado && (
@@ -292,6 +322,45 @@ export default function VisitaPage() {
           <dd className="text-texto">{cliente.tieneBateria ? "Sí" : "No"}</dd>
         </div>
       </dl>
+
+      {puedeAsignar && !visita.firmado ? (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <label className="text-sm text-suave" htmlFor="tecnico">
+            Técnico asignado
+          </label>
+          <select
+            id="tecnico"
+            value={tecnico?.id ?? ""}
+            disabled={asignando}
+            onChange={(e) => asignarTecnico(e.target.value)}
+            className="rounded border border-borde-fuerte bg-superficie p-2 text-sm focus:border-acento focus:outline-none disabled:opacity-50"
+          >
+            <option value="">— Sin asignar —</option>
+            {tecnicos.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.nombre}
+                {t.isla ? ` · ${t.isla}` : ""}
+              </option>
+            ))}
+          </select>
+          {tecnicos.length === 0 && (
+            <span className="text-xs text-aviso-contraste">
+              No hay técnicos activos. Créalos en Usuarios.
+            </span>
+          )}
+          {!tecnico && tecnicos.length > 0 && (
+            <span className="text-xs text-aviso-contraste">
+              Sin asignar: nadie la verá en su lista.
+            </span>
+          )}
+        </div>
+      ) : (
+        puedeAsignar && (
+          <p className="mb-4 text-sm text-suave">
+            Técnico: {tecnico?.nombre ?? "sin asignar"}
+          </p>
+        )
+      )}
 
       <div className="mb-4 flex flex-wrap items-center gap-3 text-sm">
         <span className="text-suave">

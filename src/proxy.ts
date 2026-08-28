@@ -24,6 +24,19 @@ export function proxy(req: NextRequest) {
 
   const tieneSesion = req.cookies.has("sesion");
   if (!tieneSesion) {
+    // Las rutas de API responden con 401, NO con una redirección.
+    //
+    // `fetch` sigue las redirecciones sin avisar: el navegador recibiría el
+    // HTML del login con estado 200, `res.ok` sería verdadero y el
+    // `res.json()` de quien llamó reventaría con un error de parseo. Es lo
+    // que pasa cada vez que caduca la sesión con la app abierta.
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json(
+        { error: "Tu sesión ha caducado. Vuelve a entrar." },
+        { status: 401 }
+      );
+    }
+
     const url = req.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

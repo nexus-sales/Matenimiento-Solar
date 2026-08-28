@@ -140,15 +140,6 @@ try {
     process.exit(1);
   }
 
-  // El orden importa: hay que mirar si el registro EXISTE antes de crearlo.
-  // Al revés, se encuentra recién creado y vacío, se concluye que no hay
-  // nada aplicado, y se intenta rehacer el esquema sobre una base que ya lo
-  // tiene. Es el fallo que rompió el primer intento en el servidor.
-  const { rows: registroPrevio } = await cliente.query(
-    "select 1 from pg_tables where schemaname='public' and tablename='_migraciones'"
-  );
-  const habiaRegistro = registroPrevio.length > 0;
-
   if (!SIMULAR) {
     await cliente.query(`
       CREATE TABLE IF NOT EXISTS _migraciones (
@@ -159,13 +150,26 @@ try {
   }
 
   let aplicadas = new Set();
-  if (habiaRegistro) {
+  const { rows: hayRegistro } = await cliente.query(
+    "select 1 from pg_tables where schemaname='public' and tablename='_migraciones'"
+  );
+  if (hayRegistro.length) {
     const { rows } = await cliente.query("select nombre from _migraciones");
     aplicadas = new Set(rows.map((r) => r.nombre));
-  } else if (t.n > 0) {
-    // Base creada antes de que existiera el registro: la primera migración
-    // ya está dentro aunque no conste. Se da por aplicada y se anota, para
-    // que la próxima vez no haya que deducirlo.
+  }
+
+  // La pregunta correcta no es si el registro EXISTE, sino si está vacío
+  // teniendo ya esquema. Un registro recién creado y vacío junto a tablas
+  // que ya están significa lo mismo que no tener registro: la migración
+  // inicial se aplicó antes de que este mecanismo existiera.
+  //
+  // Se cuentan las tablas del esquema sin contar el propio registro, que no
+  // forma parte del modelo.
+  const { rows: [reales] } = await cliente.query(
+    "select count(*)::int n from pg_tables where schemaname='public' and tablename <> '_migraciones'"
+  );
+
+  if (aplicadas.size === 0 && reales.n > 0) {
     aplicadas = new Set([migraciones[0].nombre]);
     aviso(`Base preexistente: se da por aplicada ${migraciones[0].nombre}`);
     if (!SIMULAR) {

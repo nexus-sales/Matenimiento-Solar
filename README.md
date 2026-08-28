@@ -4,9 +4,9 @@ Aplicación interna para gestionar la cartera de clientes fotovoltaicos de SR
 Energía y las visitas de mantenimiento que sus técnicos hacen en campo.
 
 **Estado:** los módulos de **Clientes**, **Mantenimiento** y **Usuarios** están
-construidos y probados contra PostgreSQL real. Quedan dos piezas conocidas: la
-**subida de fotos** (falta el almacenamiento S3-compatible) y la **generación
-del PDF del informe**.
+construidos, probados contra PostgreSQL real y **desplegados en producción**
+(Hetzner + Dokploy). Quedan dos piezas conocidas: la **subida de fotos** (falta
+el almacenamiento S3-compatible) y la **generación del PDF del informe**.
 
 El registro de decisiones, con el motivo de cada una, está en
 [`docs/decisiones.md`](docs/decisiones.md).
@@ -22,6 +22,7 @@ El registro de decisiones, con el motivo de cada una, está en
 - [Modelo de datos](#modelo-de-datos)
 - [Seguridad](#seguridad)
 - [Los módulos](#los-módulos)
+- [Despliegue](#despliegue)
 - [Tema claro y oscuro](#tema-claro-y-oscuro)
 - [Qué falta](#qué-falta)
 
@@ -123,7 +124,8 @@ se trata como ese admin.
 | `npm run build` | Compilación de producción |
 | `npm run start` | Servir lo compilado |
 | `npm run lint` | ESLint |
-| `npm run db:preparar` | **Prepara la base entera de cero.** Es el que se usa |
+| `npm run db:preparar` | **Prepara la base entera de cero, en local.** Crea base y roles |
+| `npm run db:esquema` | **Aplica el esquema en un servidor** donde la base y los roles YA existen |
 | `npm run db:password` | Cambia la contraseña de un usuario. `-- otro@correo.com` |
 | `npm run db:generate` | Genera una migración nueva tras tocar el esquema |
 | `npm run db:migrate` | Aplica migraciones pendientes |
@@ -177,14 +179,19 @@ src/
     permisos.ts               guardas de rol en la API
     tema.ts                   script anti-parpadeo del tema
   proxy.ts                    protección de rutas (era middleware.ts)
+    checklist-items.json      los 24 puntos, compartidos por seed y servidor
 scripts/
-  preparar-bd.mjs             puesta en marcha completa
+  preparar-bd.mjs             puesta en marcha completa (local)
+  aplicar-esquema.mjs         esquema en un servidor ya provisionado
   reiniciar-password.mjs      recuperación de acceso
   aplicar-rls.mjs             políticas sin depender de psql
   cargar-env.mjs              lector de .env que no pisa el entorno
 docs/
   decisiones.md               registro de decisiones con su motivo
-  *.pdf, *.xlsx               documentos de referencia del cliente
+  *.xlsx                      formulario de referencia (solo cabeceras)
+nixpacks.toml                 toolchain del despliegue: Node 22 + npm ci
+.gitignore                    excluye .env.local, .claude/ y los PDF con
+                              datos personales de clientes reales
 ```
 
 ---
@@ -397,6 +404,80 @@ quitarse su propio rol ni desactivarse a sí mismo.
 
 ---
 
+## Despliegue
+
+Desplegado en **Hetzner con Dokploy**, compilación **Nixpacks**, desde
+[`nexus-sales/Matenimiento-Solar`](https://github.com/nexus-sales/Matenimiento-Solar)
+rama `main`.
+
+### Base de datos propia, no compartida
+
+El PostgreSQL del servidor lo comparten otras aplicaciones en una única base
+(`db_principal`, con decenas de tablas y las tablas diferenciadas por prefijo).
+**Esta aplicación va en su propia base**, `mantenimiento_solar`, por tres
+motivos que el prefijo no resuelve:
+
+1. El `GRANT ... ON ALL TABLES IN SCHEMA public` que necesita el rol de la app
+   habría alcanzado **las tablas de todas las demás aplicaciones**.
+2. Los siete tipos enumerados se llaman `isla`, `provincia`, `plantilla`… y en
+   un esquema compartido esta app se quedaría con esos nombres para todo el
+   servidor.
+3. Las políticas RLS solo protegen si el `GRANT` está acotado.
+
+Los **roles sí llevan prefijo de producto** (`mantsolar_app`, `mantsolar_auth`)
+porque en PostgreSQL los roles son globales al clúster, no de la base: un rol
+llamado `app_user` chocaría con el de cualquier otra aplicación.
+
+### Variables de entorno en el panel
+
+```
+DATABASE_URL=postgresql://mantsolar_app:...@HOST_INTERNO:5432/mantenimiento_solar
+DATABASE_URL_AUTH_SERVICE=postgresql://mantsolar_auth:...@HOST_INTERNO:5432/mantenimiento_solar
+AUTH_SECRET=...
+NODE_ENV=production
+PORT=3000
+```
+
+`HOST_INTERNO` es el nombre del servicio de PostgreSQL dentro de la red de
+Docker, no `localhost` — dentro del contenedor, `localhost` es la propia app.
+
+**No definir `AUTH_MODO_PRUEBAS`**: con `NODE_ENV=production` la aplicación se
+niega a arrancar a propósito. **No definir `DATABASE_SSL`**: sin TLS es lo
+correcto para un PostgreSQL en red privada de Docker.
+
+### Crear el esquema tras el primer despliegue
+
+Las tablas **no viajan con el código**. Una vez desplegado, desde el servidor:
+
+```bash
+APP=$(docker ps --format '{{.Names}}' | grep '^srenergia' | head -1)
+PGPASS=$(docker exec <contenedor-postgres> printenv POSTGRES_PASSWORD)
+URL="postgresql://admin_apps:$PGPASS@HOST_INTERNO:5432/mantenimiento_solar"
+
+# Simular primero: informa de lo que haría, sin tocar nada
+docker exec -e DATABASE_URL_ADMIN="$URL" -e SIMULAR=si "$APP" node scripts/aplicar-esquema.mjs
+
+# Aplicar de verdad
+docker exec -e DATABASE_URL_ADMIN="$URL"   -e SEED_ADMIN_EMAIL='...' -e SEED_ADMIN_PASSWORD='...'   "$APP" node scripts/aplicar-esquema.mjs
+```
+
+`DATABASE_URL_ADMIN` es la conexión del **superusuario**: el rol de la
+aplicación no puede crear tablas, y eso es deliberado. Vive solo en ese
+comando; nunca se pone en el panel.
+
+**`db:preparar` no sirve en el servidor**: crea la base y los roles, y al
+encontrarlos ya creados les asigna contraseña nueva, lo que invalidaría las
+URLs del panel. Además depende de `drizzle-kit` y `tsx`, que son dependencias
+de desarrollo. `db:esquema` usa solo `pg` y `bcryptjs`.
+
+### El lock file se regenera desde WSL, nunca desde PowerShell
+
+npm en Windows no materializa el subárbol WASM opcional de
+`@tailwindcss/oxide-wasm32-wasi`, así que el `package-lock.json` generado ahí
+no describe el árbol que npm construye en Linux y **`npm ci` aborta**. Está
+comprobado en este proyecto, no es teórico. Ver el bloque de reglas en
+`AGENTS.md`.
+
 ## Tema claro y oscuro
 
 Selector de tres estados (claro · sistema · oscuro) en el sidebar, con
@@ -438,5 +519,5 @@ temas.
    El catálogo ya tiene `plantilla` preparado, pero necesitarán además una
    columna de **tipo de campo**: esos formularios piden medidas, metros y
    desplegables, no solo estados. Ver `docs/decisiones.md`.
-5. **Despliegue en el VPS**, con el equivalente de `db:preparar` contra su
-   PostgreSQL.
+5. **HTTPS en el subdominio.** Obligatorio antes de las fotos: el navegador
+   del móvil bloquea el acceso a la cámara sin certificado.

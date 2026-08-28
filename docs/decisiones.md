@@ -248,3 +248,86 @@ en el reparto esperado (5 paneles · 5 estructura · 7 inversor · 5 cuadros ·
 
 RLS quedó comprobado en vivo: la misma consulta devuelve 0 filas sin contexto
 de sesión y 24 con él.
+
+---
+
+## 2026-08-28 — Despliegue en Hetzner
+
+### Base de datos propia, no una compartida con prefijos
+
+El PostgreSQL del servidor lo comparten otras aplicaciones en una única base
+(`db_principal`), con las tablas diferenciadas por prefijo. Esta aplicación va
+en su propia base, `mantenimiento_solar`.
+
+**Por qué el prefijo no bastaba.** Tres cosas que no resuelve:
+
+1. El `GRANT ... ON ALL TABLES IN SCHEMA public` que necesita el rol de la app
+   habría alcanzado **las 42 tablas de las demás aplicaciones**. No es estilo:
+   es un agujero.
+2. Los siete tipos enumerados viven en el esquema, no en la tabla, y se llaman
+   `isla`, `provincia`, `plantilla`… En un esquema compartido, esta app se
+   quedaría con esos nombres para todo el servidor.
+3. Las políticas RLS solo protegen si el `GRANT` está acotado.
+
+**Los roles sí llevan prefijo** (`mantsolar_app`, `mantsolar_auth`) porque en
+PostgreSQL son globales al clúster, no de la base. Un rol `app_user` chocaría
+con el de cualquier otra aplicación del servidor.
+
+### Un script aparte para el servidor
+
+`db:preparar` **no sirve en producción**, por dos razones:
+
+- Crea la base y los roles, y al encontrarlos ya creados les asigna contraseña
+  nueva. Eso invalidaría las URLs ya configuradas en el panel de Dokploy.
+- Depende de `drizzle-kit` y `tsx`, dependencias de desarrollo que pueden no
+  estar en la imagen de producción.
+
+`scripts/aplicar-esquema.mjs` cubre el caso servidor: base y roles ya
+existentes, solo aplica migraciones, permisos, RLS y datos. Usa únicamente `pg`
+y `bcryptjs`, que son de producción, y corre con `node` a secas.
+
+**Lleva un guardián que rechaza conexiones sin permiso para crear tablas.** No
+es solo para fallar antes: un rol sujeto a RLS ve cero filas donde hay
+veinticuatro, así que sin la comprobación el script informaba de que había que
+sembrar algo ya sembrado. Un script cuyo diagnóstico depende de quién lo
+ejecuta es peor que uno que falla.
+
+### El lock file de Windows no sirve para Linux
+
+npm en Windows no materializa el subárbol WASM opcional de
+`@tailwindcss/oxide-wasm32-wasi`. El `package-lock.json` generado allí no
+describe el árbol que npm construye en Linux y `npm ci` aborta:
+
+```
+Missing: @emnapi/core@1.11.3 from lock file
+Invalid: lock file's @emnapi/wasi-threads@1.2.1 does not satisfy 1.2.3
+```
+
+Comprobado ejecutando `npm ci` en WSL con el lock de Windows, antes de
+desplegar. El lock se regenera desde WSL en una copia aislada, para no tocar
+los `node_modules` de Windows. Regla en `AGENTS.md`.
+
+### TLS desactivado por defecto, activable por variable
+
+El PostgreSQL del servidor es un contenedor en la red privada de Docker, sin
+TLS. Atar el SSL a `NODE_ENV=production` habría dado `The server does not
+support SSL connections` y la app no arrancaría. `DATABASE_SSL` sin definir
+significa sin TLS; `require` o `strict` lo activan.
+
+### Qué no sube al repositorio
+
+- `.env.local` — contraseñas de los roles y secreto de firma de sesiones.
+- `.claude/` — metodología interna de Grupo LMB, no forma parte del producto.
+- `docs/*.pdf` — el acta de obra y el informe de visita llevan **nombres, DNI,
+  direcciones y fotos de viviendas de clientes reales**. Publicarlos sería una
+  cesión de datos sin base legal. El `.xlsx` sí sube: solo tiene cabeceras.
+
+### Un despliegue por cliente, no multiinquilino
+
+La aplicación **no tiene ningún concepto de «empresa»** en el modelo de datos:
+ni columna que separe instaladoras, ni política RLS que lo contemple. Cada
+cliente es un despliegue propio, con su base y su subdominio — que es además el
+patrón que ya sigue el resto de aplicaciones del servidor.
+
+Convertirla en multiinquilino exigiría tocar las siete tablas y las quince
+políticas. No está hecho y no está previsto de momento.

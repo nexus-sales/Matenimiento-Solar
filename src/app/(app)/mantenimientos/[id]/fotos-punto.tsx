@@ -9,11 +9,10 @@ export type Foto = { id: string; pie: string | null };
 /**
  * Fotos de un punto del checklist.
  *
- * NO se usa el atributo `capture`. Parece la opción obvia —abrir la cámara
- * directamente ahorra un toque— pero combinado con `multiple` da problemas
- * en varios navegadores móviles: la cámara se abre, se hace la foto y el
- * evento `change` no llega nunca. Sin `capture`, el sistema ofrece cámara o
- * galería, que además es útil: a veces la foto buena ya está hecha.
+ * La camara y la galeria usan inputs separados. `capture` con `multiple`
+ * falla en varios navegadores moviles: la camara se abre, se hace la foto y
+ * el evento `change` no siempre llega. Separarlo permite pedir camara de
+ * forma explicita sin perder la subida multiple desde galeria.
  */
 export function FotosPunto({
   mantenimientoId,
@@ -28,7 +27,8 @@ export function FotosPunto({
   bloqueado: boolean;
   onCambio: () => void;
 }) {
-  const entrada = useRef<HTMLInputElement>(null);
+  const entradaCamara = useRef<HTMLInputElement>(null);
+  const entradaGaleria = useRef<HTMLInputElement>(null);
   const [progreso, setProgreso] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -126,32 +126,66 @@ export function FotosPunto({
         ))}
 
         {!bloqueado && (
-          <button
-            type="button"
-            disabled={progreso !== null}
-            onClick={() => entrada.current?.click()}
-            className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded border border-dashed border-borde-fuerte text-xs text-suave hover:border-acento hover:text-acento disabled:opacity-50"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={1.8}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden
-              className="h-6 w-6"
+          <>
+            <button
+              type="button"
+              disabled={progreso !== null}
+              onClick={() => entradaCamara.current?.click()}
+              className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded border border-dashed border-borde-fuerte text-xs text-suave hover:border-acento hover:text-acento disabled:opacity-50"
             >
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-              <circle cx="12" cy="13" r="4" />
-            </svg>
-            Foto
-          </button>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.8}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+                className="h-6 w-6"
+              >
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                <circle cx="12" cy="13" r="4" />
+              </svg>
+              Camara
+            </button>
+
+            <button
+              type="button"
+              disabled={progreso !== null}
+              onClick={() => entradaGaleria.current?.click()}
+              className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded border border-dashed border-borde-fuerte text-xs text-suave hover:border-acento hover:text-acento disabled:opacity-50"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.8}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+                className="h-6 w-6"
+              >
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <path d="m21 15-5-5L5 21" />
+              </svg>
+              Galeria
+            </button>
+          </>
         )}
       </div>
 
       <input
-        ref={entrada}
+        ref={entradaCamara}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={subir}
+        className="hidden"
+      />
+
+      <input
+        ref={entradaGaleria}
         type="file"
         accept="image/*"
         multiple

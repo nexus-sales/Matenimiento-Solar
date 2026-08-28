@@ -1,0 +1,57 @@
+# Dependencias
+node_modules/
+
+# Compilación de Next
+.next/
+out/
+build/
+next-env.d.ts
+*.tsbuildinfo
+
+# ---------------------------------------------------------------------
+# Variables de entorno — NUNCA se suben.
+#
+# .env.local lo genera `npm run db:preparar` y contiene las contraseñas
+# de los roles de PostgreSQL y el secreto de firma de las sesiones. En el
+# servidor esas variables se configuran en el panel de Dokploy, no en un
+# archivo del repositorio.
+#
+# .env.example sí se sube: documenta qué variables hacen falta, con
+# valores de ejemplo.
+# ---------------------------------------------------------------------
+.env
+.env.local
+.env.*.local
+.env.production
+
+# Registros y temporales
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+*.tmp
+*.bak
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# ---------------------------------------------------------------------
+# Herramientas internas de Grupo LMB.
+# Metodología propia (auditor, explorador, fontanero, council). No forma
+# parte del producto y no tiene por qué viajar con el repositorio.
+# ---------------------------------------------------------------------
+.claude/
+
+# ---------------------------------------------------------------------
+# Documentos de referencia con DATOS PERSONALES REALES.
+#
+# El acta de obra y el informe de visita llevan nombres, DNI, direcciones
+# y fotos de viviendas de clientes reales. Son material de consulta para
+# diseñar los formularios, no código, y publicarlos en un repositorio
+# sería una cesión de datos sin base legal.
+#
+# Se quedan en local. El .xlsx sí se sube: solo tiene las cabeceras.
+# ---------------------------------------------------------------------
+docs/*.pdf

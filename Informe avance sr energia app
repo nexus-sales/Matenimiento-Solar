@@ -1,0 +1,85 @@
+# Informe de avance — sr-energia-app
+
+**Proyecto:** App de gestión de mantenimiento fotovoltaico — SR Energía (fase 1)
+**Fecha objetivo:** versión presentable el 10 de septiembre
+**Estado general:** esqueleto funcional con CRUD completo de las entidades principales, checklist de mantenimiento operativo. **No probado todavía contra una base de datos real.**
+
+---
+
+## 1. Resumen ejecutivo
+
+El proyecto tiene ya el núcleo de datos y la gestión completa (Clientes, Instalaciones, Usuarios) construidos y verificados a nivel de código — compilan sin errores de TypeScript y pasan el linter sin avisos. El formulario de mantenimiento, que es la pieza central del encargo, está funcional con los 24 puntos reales del checklist de SR Energía.
+
+Falta lo que convierte esto en un producto entregable: fotos, importación de Excel, generación automática de PDF, y — el paso más urgente antes de seguir añadiendo nada — probarlo todo contra una base de datos Postgres real, no solo verificado sobre el papel.
+
+---
+
+## 2. Realizado
+
+### 2.1 Base de datos
+- Esquema completo con Drizzle ORM (`src/db/schema.ts`): 6 tablas — `usuarios`, `clientes`, `instalaciones`, `mantenimientos`, `checklist_item_definicion`, `mantenimiento_checklist_respuesta`.
+- Row Level Security real en Postgres (`src/db/rls.sql`), con políticas distintas para admin, oficina y técnico.
+- Rol de servicio (`app_auth_service`) con `BYPASSRLS` limitado a 4 columnas de solo lectura de `usuarios`, usado únicamente en el login — es la única conexión de toda la app que no pasa por RLS.
+- Seed (`src/db/seed.ts`): los 24 puntos reales del checklist de mantenimiento (corregido de una cifra de 27 que se manejó por error en una fase anterior de diseño) y el primer usuario admin, con contraseña generada e impresa una sola vez en consola.
+
+### 2.2 Autenticación y sesión
+- Login con contraseña (bcrypt, coste 12) + sesión por JWT en cookie `httpOnly`.
+- Logout.
+- Middleware de protección de rutas (`src/middleware.ts`) — **se encontró y corrigió un bug real**: el archivo estaba nombrado `proxy.ts`, un nombre que Next.js no reconoce como middleware, por lo que la protección de rutas nunca se habría ejecutado.
+- Comprobación de rol a nivel de API (`src/lib/permisos.ts`) como defensa en profundidad, además de RLS.
+- **Modo de pruebas** para saltarse el login en desarrollo local (`src/lib/modo-pruebas.ts`), con guardián verificado por ejecución real (no solo revisado por lectura) en tres escenarios: desactivado por defecto, activo en desarrollo, y bloqueado si coincide con `NODE_ENV=production`.
+
+### 2.3 CRUD de Clientes
+- Alta, edición, borrado (en cascada sobre instalaciones y mantenimientos), búsqueda por nombre o documento.
+- Validación de **DNI, NIE y CIF** con letra de control verificada matemáticamente para DNI y NIE (el CIF solo se valida en formato, ya que su dígito de control depende del tipo de entidad).
+
+### 2.4 CRUD de Instalaciones
+- Alta, edición, borrado, ligadas a un cliente.
+- Validación de formato de **CUPS** (ES + 16 dígitos + 2 letras de control).
+
+### 2.5 CRUD de Usuarios (solo admin)
+- Alta de usuarios con rol (admin/oficina/técnico) e isla (solo técnicos).
+- Activar/desactivar en vez de borrar, para no perder el histórico de qué técnico ejecutó cada mantenimiento.
+- Protegido en tres capas: la página redirige si no eres admin, la API devuelve 403, RLS lo bloquea en la base de datos.
+- Un admin no puede quitarse su propio rol ni desactivarse a sí mismo.
+
+### 2.6 Checklist de mantenimiento
+- Formulario de visita con los 24 puntos agrupados por categoría (paneles, estructura, inversor, cuadros y protecciones, baterías).
+- Por punto: checkbox de hecho/no hecho + observación opcional. Foto opcional con placeholder pendiente de conectar.
+- Guardado punto a punto (no hay que rellenar todo el formulario para no perder avance).
+- Catálogo de puntos editable por admin sin tocar código (fijo + editable, como se decidió en el diseño).
+
+---
+
+## 3. Verificación realizada
+
+- `npx tsc --noEmit` — sin errores en ninguna de las rondas de esta fase.
+- `npx eslint src` — sin errores ni avisos.
+- El guardián de producción del modo de pruebas se ejecutó de verdad (no solo se leyó el código) en tres escenarios, con resultado correcto en los tres.
+- **No verificado todavía:** ejecución real contra una base de datos Postgres — ni migraciones, ni RLS aplicado de verdad, ni login funcionando de extremo a extremo con datos reales.
+
+---
+
+## 4. Pendiente
+
+En orden de prioridad recomendada:
+
+1. **Probar contra una base de datos real.** Levantar Postgres en el VPS (o local para desarrollo), correr migraciones, aplicar `rls.sql`, sembrar, y verificar login + CRUD + checklist de extremo a extremo. Es el paso que más riesgo oculto tiene ahora mismo — todo lo demás está verificado solo a nivel de código.
+2. **Subida y compresión de fotos** en el checklist (~1600px, JPEG ~75% antes de guardar) — pendiente de conectar almacenamiento S3-compatible (MinIO u otro) en el VPS.
+3. **Importación de Excel** en el formato que ya usa SR Energía, con CUPS/DNI como clave para evitar duplicados al reimportar.
+4. **Generación automática de PDF** al firmar una visita + envío automático de copia a la oficina por email.
+5. **Confirmar con el cliente** los pendientes ya anotados en la especificación técnica: si "no aplica" en el checklist (ej. sin batería) se gestiona por instalación o queda fijo para todas; y el aislamiento de la base de datos respecto a otras apps del VPS.
+
+---
+
+## 5. Riesgos y decisiones abiertas
+
+- **No probado en infraestructura real** (punto 1 de arriba) — el mayor riesgo actual, porque RLS y el flujo de autenticación son piezas que solo se validan de verdad contra Postgres, no con `tsc`/`eslint`.
+- **Migración de datos actuales** (Excel + Google Drive) — sigue pendiente de plan concreto, anotado ya en la especificación técnica original.
+- **Plazo:** 10 de septiembre para versión presentable. Con el CRUD y el checklist ya listos, lo más urgente para cumplir esa fecha es el punto 1 (verificar en real) y, si hay tiempo, el PDF automático — es la pieza que el cliente pidió explícitamente y la que más valor demuestra en una presentación.
+
+---
+
+## 6. Próximo paso recomendado
+
+Levantar una base de datos Postgres de prueba (local o en el VPS) y validar el flujo completo — login real, alta de cliente/instalación, y una visita de mantenimiento de principio a fin — antes de seguir construyendo funcionalidades nuevas encima de algo aún no verificado en la práctica.

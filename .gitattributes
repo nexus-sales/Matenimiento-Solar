@@ -1,0 +1,11 @@
+# El repositorio se construye en Linux (Nixpacks) desde un equipo Windows.
+# Normalizar a LF evita que los scripts .mjs y .sql lleguen al servidor con
+# retornos de carro, y quita el ruido de avisos en cada `git add`.
+* text=auto eol=lf
+
+# Binarios: que git no los toque.
+*.pdf binary
+*.xlsx binary
+*.png binary
+*.jpg binary
+*.ico binary

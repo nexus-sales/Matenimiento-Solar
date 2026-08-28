@@ -1,0 +1,191 @@
+@import "tailwindcss";
+
+/*
+ * ---------------------------------------------------------------------
+ * Sistema de color de SR Energía
+ * ---------------------------------------------------------------------
+ *
+ * Regla única: en los componentes NO se escriben colores crudos
+ * (bg-white, text-gray-500, border-red-200...). Se usan siempre los
+ * tokens semánticos de más abajo — bg-superficie, text-suave, border-borde.
+ *
+ * El motivo es que el modo oscuro no es "el claro con los grises
+ * invertidos": cada rol de color se elige aparte para los dos temas. Si un
+ * componente escribe `bg-white` directamente, en oscuro se queda en blanco
+ * y no hay forma de arreglarlo sin volver a tocar ese componente. Con
+ * tokens, un tema nuevo se define una vez aquí y toda la app lo sigue.
+ */
+
+/* Escape para casos puntuales: `oscuro:loquesea`. Úsalo solo si de verdad
+   no hay un token que lo cubra — normalmente lo hay. */
+@custom-variant oscuro (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* ------------------------------ TEMA CLARO ------------------------- */
+:root {
+  color-scheme: light;
+
+  /* Superficies, de la más de fondo a la más elevada */
+  --fondo: #f7f8f5;
+  --superficie: #ffffff;
+  --superficie-alt: #f4f5f1;
+  --superficie-fuerte: #e9ebe4;
+
+  /* Bordes: `borde` separa bloques, `borde-fuerte` delimita campos */
+  --borde: #e4e7de;
+  --borde-fuerte: #cfd4c6;
+
+  /* Texto, de más a menos peso visual */
+  --texto: #1a1d17;
+  --texto-medio: #4b5147;
+  --texto-suave: #6b7266;
+  --texto-tenue: #878d81;
+
+  /*
+   * Marca: verde oliva del logo.
+   *
+   * `--marca` es el tono exacto del logo (#899b13) y solo vale como
+   * decoración —la barra del sidebar, el punto de un indicador—, porque
+   * texto blanco encima se queda en 3.1:1 y no llega al mínimo de la AA.
+   * `--acento` es el relleno de los botones, un paso más oscuro, que con
+   * texto blanco da 4.6:1. Los dos son el verde de la marca; se separan
+   * porque uno carga texto y el otro no.
+   */
+  --marca: #899b13;
+  --acento: #6d7c0f;
+  --acento-hover: #5d6a0d;
+  --acento-encima: #ffffff; /* texto sobre un fondo `acento` */
+  --acento-suave: #f0f3df; /* fondo de distintivos y navegación activa */
+  --acento-contraste: #5d6a0d; /* texto sobre `acento-suave` */
+
+  /* Azul: información neutra */
+  --info: #5786b8;
+  --info-suave: #eef3f9;
+  --info-contraste: #3d6389;
+
+  /* Coral: avisos que no son errores */
+  --aviso: #f3a267;
+  --aviso-contraste: #b45c26;
+
+  /* Rojo: errores y acciones destructivas */
+  --peligro: #c0362b;
+  --peligro-suave: #fdf1f0;
+  --peligro-borde: #f3cbc7;
+  --peligro-contraste: #a32b21;
+}
+
+/* ------------------------------ TEMA OSCURO ------------------------ */
+/*
+ * No es el claro invertido. Las superficies suben de luminosidad según se
+ * elevan (fondo < superficie < alt), que es como el ojo lee profundidad
+ * cuando no hay sombras; y los colores de marca se aclaran, porque el
+ * oliva del logo sobre negro queda apagado e ilegible como texto.
+ */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --fondo: #101310;
+  --superficie: #181c17;
+  --superficie-alt: #20251f;
+  --superficie-fuerte: #2a2f28;
+
+  --borde: #2b312a;
+  --borde-fuerte: #3f473d;
+
+  --texto: #e9ece5;
+  --texto-medio: #b9c0b3;
+  --texto-suave: #99a193;
+  --texto-tenue: #767d71;
+
+  /* El oliva se aclara para mantener contraste sobre fondo oscuro, y el
+     texto que va encima pasa a ser oscuro en lugar de blanco. Aclarado ya
+     no hace falta separar decoración de relleno: ambos son el mismo tono. */
+  --marca: #a9be1f;
+  --acento: #a9be1f;
+  --acento-hover: #bcd12c;
+  --acento-encima: #12150a;
+  --acento-suave: #262d10;
+  --acento-contraste: #c3d64a;
+
+  --info: #6d9ccb;
+  --info-suave: #172230;
+  --info-contraste: #8fb6dd;
+
+  --aviso: #e8a068;
+  --aviso-contraste: #e8a068;
+
+  --peligro: #f28b82;
+  --peligro-suave: #2a1614;
+  --peligro-borde: #4d2723;
+  --peligro-contraste: #f5a29b;
+}
+
+/*
+ * `inline` hace que las utilidades generadas apunten a la variable, no a
+ * su valor: por eso basta con redefinir las variables de arriba para que
+ * toda la app cambie de tema, sin regenerar clases.
+ */
+@theme inline {
+  --color-fondo: var(--fondo);
+  --color-superficie: var(--superficie);
+  --color-superficie-alt: var(--superficie-alt);
+  --color-superficie-fuerte: var(--superficie-fuerte);
+
+  --color-borde: var(--borde);
+  --color-borde-fuerte: var(--borde-fuerte);
+
+  --color-texto: var(--texto);
+  --color-medio: var(--texto-medio);
+  --color-suave: var(--texto-suave);
+  --color-tenue: var(--texto-tenue);
+
+  --color-marca: var(--marca);
+  --color-acento: var(--acento);
+  --color-acento-hover: var(--acento-hover);
+  --color-acento-encima: var(--acento-encima);
+  --color-acento-suave: var(--acento-suave);
+  --color-acento-contraste: var(--acento-contraste);
+
+  --color-info: var(--info);
+  --color-info-suave: var(--info-suave);
+  --color-info-contraste: var(--info-contraste);
+
+  --color-aviso: var(--aviso);
+  --color-aviso-contraste: var(--aviso-contraste);
+
+  --color-peligro: var(--peligro);
+  --color-peligro-suave: var(--peligro-suave);
+  --color-peligro-borde: var(--peligro-borde);
+  --color-peligro-contraste: var(--peligro-contraste);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--fondo);
+  color: var(--texto);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/*
+ * El navegador pinta los desplegables nativos con el color-scheme del
+ * documento, pero no su fondo cuando el <select> lleva uno propio: se le
+ * dice explícitamente para que las opciones no salgan blancas en oscuro.
+ */
+option {
+  background: var(--superficie);
+  color: var(--texto);
+}
+
+/* El tema se aplica antes de pintar (ver el script del layout). La
+   transición es solo para el cambio manual desde el selector, y se
+   respeta a quien haya pedido menos movimiento. */
+@media (prefers-reduced-motion: no-preference) {
+  body,
+  .transicion-tema {
+    transition:
+      background-color 150ms ease,
+      border-color 150ms ease,
+      color 150ms ease;
+  }
+}

@@ -1,0 +1,483 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import Link from "next/link";
+import { leerErrorApi } from "@/lib/errores-api";
+import {
+  CATEGORIAS,
+  ESTADOS_PUNTO,
+  NOMBRE_CATEGORIA,
+  NOMBRE_ESTADO,
+  NOMBRE_TIPO_VISITA,
+  type Categoria,
+  type EstadoPunto,
+} from "@/lib/checklist";
+import { Firma } from "./panel-firma";
+
+type Item = {
+  id: string;
+  categoria: Categoria;
+  nombre: string;
+  periodicidadMeses: number;
+  orden: number;
+};
+
+type Respuesta = {
+  id: string;
+  estado: EstadoPunto;
+  observacion: string | null;
+} | null;
+
+type Fila = { item: Item; respuesta: Respuesta; fotos: { id: string; url: string }[] };
+
+type Visita = {
+  id: string;
+  tipo: "semestral" | "anual";
+  fechaPrevista: string;
+  fechaEjecucion: string | null;
+  firmado: boolean;
+  comentariosGenerales: string | null;
+  equiposReemplazados: string | null;
+  firmanteClienteNombre: string | null;
+  firmanteTecnicoNombre: string | null;
+};
+
+type Cliente = {
+  id: string;
+  nombre: string;
+  direccion: string | null;
+  isla: string | null;
+  cups: string | null;
+  marcaInversor: string | null;
+  tieneBateria: boolean;
+};
+
+function fecha(iso: string | null) {
+  return iso ? iso.split("-").reverse().join("/") : "—";
+}
+
+const ESTILO_ESTADO: Record<EstadoPunto, string> = {
+  sin_revisar: "border-borde-fuerte text-suave",
+  correcto: "border-acento bg-acento-suave text-acento-contraste",
+  incidencia: "border-peligro-borde bg-peligro-suave text-peligro-contraste",
+  no_aplica: "border-borde bg-superficie-fuerte text-tenue",
+};
+
+export default function VisitaPage() {
+  const { id } = useParams<{ id: string }>();
+
+  const [visita, setVisita] = useState<Visita | null>(null);
+  const [cliente, setCliente] = useState<Cliente | null>(null);
+  const [tecnico, setTecnico] = useState<{ nombre: string } | null>(null);
+  const [checklist, setChecklist] = useState<Fila[]>([]);
+  const [obsBloque, setObsBloque] = useState<Record<string, string>>({});
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [firmaTecnico, setFirmaTecnico] = useState<string | null>(null);
+  const [firmaCliente, setFirmaCliente] = useState<string | null>(null);
+  const [datosFirma, setDatosFirma] = useState({
+    tecnicoNombre: "",
+    tecnicoDocumento: "",
+    clienteNombre: "",
+    clienteDocumento: "",
+  });
+  const [firmando, setFirmando] = useState(false);
+
+  const cargar = useCallback(async () => {
+    setCargando(true);
+    const res = await fetch(`/api/mantenimientos/${id}`);
+    if (res.ok) {
+      const d = await res.json();
+      setVisita(d.visita);
+      setCliente(d.cliente);
+      setTecnico(d.tecnico);
+      setChecklist(d.checklist);
+      setObsBloque(
+        Object.fromEntries(
+          (d.observacionesBloque ?? []).map(
+            (o: { categoria: string; observacion: string | null }) => [
+              o.categoria,
+              o.observacion ?? "",
+            ]
+          )
+        )
+      );
+      setError(null);
+    } else {
+      setError(await leerErrorApi(res, "No se pudo cargar la visita."));
+    }
+    setCargando(false);
+  }, [id]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    cargar();
+  }, [cargar]);
+
+  /** Guarda punto a punto: en una cubierta no se pulsa "guardar" al final. */
+  async function guardarPunto(
+    fila: Fila,
+    cambios: { estado?: EstadoPunto; observacion?: string | null }
+  ) {
+    const estado = cambios.estado ?? fila.respuesta?.estado ?? "sin_revisar";
+    const observacion =
+      cambios.observacion !== undefined
+        ? cambios.observacion
+        : (fila.respuesta?.observacion ?? null);
+
+    setChecklist((prev) =>
+      prev.map((f) =>
+        f.item.id === fila.item.id
+          ? {
+              ...f,
+              respuesta: { id: f.respuesta?.id ?? "", estado, observacion },
+            }
+          : f
+      )
+    );
+
+    const res = await fetch(`/api/mantenimientos/${id}/checklist`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ itemId: fila.item.id, estado, observacion }),
+    });
+
+    if (!res.ok) {
+      setError(await leerErrorApi(res, "No se pudo guardar el punto."));
+      cargar();
+    } else {
+      setError(null);
+    }
+  }
+
+  async function guardarObservacionBloque(categoria: string, texto: string) {
+    const res = await fetch(`/api/mantenimientos/${id}/checklist`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ categoria, observacion: texto }),
+    });
+    if (!res.ok) {
+      setError(await leerErrorApi(res, "No se pudo guardar la observación."));
+    }
+  }
+
+  async function firmar() {
+    setError(null);
+
+    if (!firmaTecnico || !firmaCliente) {
+      setError("Faltan las dos firmas: la del técnico y la del cliente.");
+      return;
+    }
+
+    setFirmando(true);
+    const hoy = new Date();
+    const res = await fetch(`/api/mantenimientos/${id}/firma`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fechaEjecucion: `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-${String(hoy.getDate()).padStart(2, "0")}`,
+        tecnico: {
+          nombre: datosFirma.tecnicoNombre,
+          documento: datosFirma.tecnicoDocumento,
+          firma: firmaTecnico,
+        },
+        cliente: {
+          nombre: datosFirma.clienteNombre,
+          documento: datosFirma.clienteDocumento,
+          firma: firmaCliente,
+        },
+      }),
+    });
+    setFirmando(false);
+
+    if (!res.ok) {
+      setError(await leerErrorApi(res, "No se pudo firmar la visita."));
+      return;
+    }
+    cargar();
+  }
+
+  if (cargando) return <p className="p-8 text-sm text-suave">Cargando…</p>;
+
+  if (!visita || !cliente) {
+    return (
+      <main className="mx-auto max-w-4xl p-8">
+        <Link href="/mantenimientos" className="text-sm text-suave">
+          ← Mantenimientos
+        </Link>
+        <p className="mt-4 rounded-md border border-peligro-borde bg-peligro-suave p-3 text-sm text-peligro-contraste">
+          {error ?? "Visita no encontrada."}
+        </p>
+      </main>
+    );
+  }
+
+  const revisados = checklist.filter(
+    (f) => f.respuesta && f.respuesta.estado !== "sin_revisar"
+  ).length;
+  const incidencias = checklist.filter(
+    (f) => f.respuesta?.estado === "incidencia"
+  ).length;
+  const completo = revisados === checklist.length && checklist.length > 0;
+
+  const categoriasVisibles = CATEGORIAS.filter((c) =>
+    checklist.some((f) => f.item.categoria === c)
+  );
+
+  return (
+    <main className="mx-auto max-w-4xl p-8">
+      <Link href="/mantenimientos" className="text-sm text-suave">
+        ← Mantenimientos
+      </Link>
+
+      <div className="mt-2 mb-1 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold">
+            <Link href={`/clientes/${cliente.id}`} className="hover:underline">
+              {cliente.nombre}
+            </Link>
+          </h1>
+          <p className="mt-0.5 text-sm text-suave">
+            Visita {NOMBRE_TIPO_VISITA[visita.tipo].toLowerCase()} · prevista{" "}
+            {fecha(visita.fechaPrevista)}
+            {tecnico ? ` · ${tecnico.nombre}` : " · sin técnico asignado"}
+          </p>
+        </div>
+        {visita.firmado && (
+          <span className="shrink-0 rounded-full bg-acento-suave px-2 py-0.5 text-xs text-acento-contraste">
+            Firmada {fecha(visita.fechaEjecucion)}
+          </span>
+        )}
+      </div>
+
+      {/* Los datos que el técnico necesita en la puerta, sin abrir otra
+          pantalla: dónde es, qué CUPS y qué equipos hay. */}
+      <dl className="mb-5 grid grid-cols-2 gap-x-6 gap-y-2 rounded-lg border border-borde bg-superficie p-4 text-xs sm:grid-cols-4">
+        <div className="col-span-2">
+          <dt className="text-tenue">Dirección</dt>
+          <dd className="text-texto">{cliente.direccion || "—"}</dd>
+        </div>
+        <div>
+          <dt className="text-tenue">Isla</dt>
+          <dd className="text-texto">{cliente.isla || "—"}</dd>
+        </div>
+        <div>
+          <dt className="text-tenue">Inversor</dt>
+          <dd className="text-texto">{cliente.marcaInversor || "—"}</dd>
+        </div>
+        <div className="col-span-2">
+          <dt className="text-tenue">CUPS</dt>
+          <dd className="font-mono text-texto">{cliente.cups || "—"}</dd>
+        </div>
+        <div>
+          <dt className="text-tenue">Batería</dt>
+          <dd className="text-texto">{cliente.tieneBateria ? "Sí" : "No"}</dd>
+        </div>
+      </dl>
+
+      <div className="mb-4 flex flex-wrap items-center gap-3 text-sm">
+        <span className="text-suave">
+          {revisados} de {checklist.length} puntos revisados
+        </span>
+        {incidencias > 0 && (
+          <span className="rounded-full bg-peligro-suave px-2 py-0.5 text-xs text-peligro-contraste">
+            {incidencias} incidencia{incidencias === 1 ? "" : "s"}
+          </span>
+        )}
+      </div>
+
+      {error && (
+        <p className="mb-4 rounded-md border border-peligro-borde bg-peligro-suave p-3 text-sm text-peligro-contraste">
+          {error}
+        </p>
+      )}
+
+      {categoriasVisibles.map((categoria) => (
+        <section key={categoria} className="mb-5">
+          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-tenue">
+            {NOMBRE_CATEGORIA[categoria]}
+          </h2>
+
+          <div className="divide-y divide-borde overflow-hidden rounded-lg border border-borde bg-superficie">
+            {checklist
+              .filter((f) => f.item.categoria === categoria)
+              .map((fila) => {
+                const estado = fila.respuesta?.estado ?? "sin_revisar";
+                return (
+                  <div key={fila.item.id} className="p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-sm text-texto">
+                        {fila.item.nombre}
+                        <span className="ml-2 text-xs text-tenue">
+                          {fila.item.periodicidadMeses} meses
+                        </span>
+                      </p>
+                    </div>
+
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {ESTADOS_PUNTO.filter((e) => e !== "sin_revisar").map(
+                        (opcion) => (
+                          <button
+                            key={opcion}
+                            type="button"
+                            disabled={visita.firmado}
+                            onClick={() =>
+                              guardarPunto(fila, { estado: opcion })
+                            }
+                            className={`rounded-full border px-2.5 py-1 text-xs disabled:opacity-60 ${
+                              estado === opcion
+                                ? ESTILO_ESTADO[opcion]
+                                : "border-borde text-suave hover:border-borde-fuerte"
+                            }`}
+                          >
+                            {NOMBRE_ESTADO[opcion]}
+                          </button>
+                        )
+                      )}
+                    </div>
+
+                    {(estado === "incidencia" ||
+                      fila.respuesta?.observacion) && (
+                      <textarea
+                        rows={2}
+                        disabled={visita.firmado}
+                        defaultValue={fila.respuesta?.observacion ?? ""}
+                        placeholder={
+                          estado === "incidencia"
+                            ? "Obligatorio: qué has encontrado"
+                            : "Observación"
+                        }
+                        onBlur={(e) =>
+                          guardarPunto(fila, {
+                            observacion: e.target.value || null,
+                          })
+                        }
+                        className="mt-2 w-full rounded border border-borde-fuerte bg-superficie p-2 text-sm focus:border-acento focus:outline-none"
+                      />
+                    )}
+
+                    {/* La subida de fotos queda pendiente del almacenamiento
+                        S3-compatible: el modelo ya admite varias por punto. */}
+                    <button
+                      type="button"
+                      disabled
+                      title="Pendiente de conectar el almacenamiento de fotos"
+                      className="mt-2 rounded border border-borde px-2 py-1 text-xs text-tenue opacity-60"
+                    >
+                      + Foto ({fila.fotos.length})
+                    </button>
+                  </div>
+                );
+              })}
+          </div>
+
+          {/* Observación del bloque entero: lo que se dice de "toda la
+              estructura" no tiene que repetirse en sus cinco puntos. */}
+          <textarea
+            rows={2}
+            disabled={visita.firmado}
+            defaultValue={obsBloque[categoria] ?? ""}
+            placeholder={`Observación general de ${NOMBRE_CATEGORIA[categoria].toLowerCase()}`}
+            onBlur={(e) => guardarObservacionBloque(categoria, e.target.value)}
+            className="mt-2 w-full rounded border border-borde bg-superficie p-2 text-sm focus:border-acento focus:outline-none"
+          />
+        </section>
+      ))}
+
+      {visita.firmado ? (
+        <div className="rounded-lg border border-borde bg-superficie p-5 text-sm">
+          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-tenue">
+            Conformidad
+          </h2>
+          <p className="text-suave">
+            Firmada el {fecha(visita.fechaEjecucion)} por{" "}
+            {visita.firmanteTecnicoNombre} (SR Energía) y{" "}
+            {visita.firmanteClienteNombre} (cliente).
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-borde bg-superficie p-5">
+          <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-tenue">
+            Cerrar y firmar
+          </h2>
+          <p className="mb-4 text-xs text-tenue">
+            Una vez firmada, la visita no se puede modificar.
+          </p>
+
+          {!completo && (
+            <p className="mb-4 rounded-md border border-borde bg-superficie-alt p-3 text-sm text-suave">
+              Faltan {checklist.length - revisados} punto(s) por revisar antes
+              de poder firmar.
+            </p>
+          )}
+
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <div className="space-y-2">
+              <input
+                placeholder="Nombre del técnico"
+                value={datosFirma.tecnicoNombre}
+                onChange={(e) =>
+                  setDatosFirma({ ...datosFirma, tecnicoNombre: e.target.value })
+                }
+                className="w-full rounded border border-borde-fuerte bg-superficie p-2 text-sm focus:border-acento focus:outline-none"
+              />
+              <input
+                placeholder="DNI del técnico"
+                value={datosFirma.tecnicoDocumento}
+                onChange={(e) =>
+                  setDatosFirma({
+                    ...datosFirma,
+                    tecnicoDocumento: e.target.value.toUpperCase(),
+                  })
+                }
+                className="w-full rounded border border-borde-fuerte bg-superficie p-2 text-sm focus:border-acento focus:outline-none"
+              />
+              <Firma
+                etiqueta="Por SR Energía"
+                valor={firmaTecnico}
+                onChange={setFirmaTecnico}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <input
+                placeholder="Nombre del cliente"
+                value={datosFirma.clienteNombre}
+                onChange={(e) =>
+                  setDatosFirma({ ...datosFirma, clienteNombre: e.target.value })
+                }
+                className="w-full rounded border border-borde-fuerte bg-superficie p-2 text-sm focus:border-acento focus:outline-none"
+              />
+              <input
+                placeholder="DNI del cliente"
+                value={datosFirma.clienteDocumento}
+                onChange={(e) =>
+                  setDatosFirma({
+                    ...datosFirma,
+                    clienteDocumento: e.target.value.toUpperCase(),
+                  })
+                }
+                className="w-full rounded border border-borde-fuerte bg-superficie p-2 text-sm focus:border-acento focus:outline-none"
+              />
+              <Firma
+                etiqueta="Por el cliente"
+                valor={firmaCliente}
+                onChange={setFirmaCliente}
+              />
+            </div>
+          </div>
+
+          <button
+            onClick={firmar}
+            disabled={!completo || firmando}
+            className="mt-4 rounded bg-acento px-4 py-2 text-sm text-acento-encima hover:bg-acento-hover disabled:opacity-50"
+          >
+            {firmando ? "Firmando…" : "Firmar y cerrar visita"}
+          </button>
+        </div>
+      )}
+    </main>
+  );
+}

@@ -1,0 +1,14 @@
+# Nixpacks decide el toolchain del despliegue en Dokploy.
+#
+# Sin esto cae a su Node por defecto (18) y Next 16 aborta con EBADENGINE,
+# porque exige >= 20.9. El `engines` de package.json es la fuente portable;
+# esta variable fija la versión exacta que se usa al construir.
+providers = ["node"]
+
+[variables]
+NIXPACKS_NODE_VERSION = "22"
+
+[phases.install]
+# `npm ci` exige que el lock describa exactamente el árbol de Linux. Ver la
+# regla de AGENTS.md: el lock se regenera desde WSL, nunca desde PowerShell.
+cmds = ["npm ci --no-audit --no-fund"]

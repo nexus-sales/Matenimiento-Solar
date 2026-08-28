@@ -421,6 +421,15 @@ principio** —lo que la oficina necesita sin recorrer las 24 filas—, el regis
 punto por punto con sus fotos y observaciones, y las dos firmas con nombre y
 documento.
 
+### Ayuda
+
+Página `/ayuda` dentro de la aplicación, enlazada desde el panel lateral.
+**Se ordena según quién la abre**: al técnico le sale primero cómo hacer una
+visita, porque la consulta en el móvil, en casa del cliente y con prisa; a
+oficina y administración les sale primero lo suyo.
+
+Incluye dudas frecuentes y una tabla de qué puede hacer cada rol.
+
 ### Usuarios
 
 Solo admin. Alta, cambio de rol e isla, activar y desactivar. Un admin no puede

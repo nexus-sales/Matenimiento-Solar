@@ -222,6 +222,29 @@ export default function SidebarCliente({
           })}
         </nav>
 
+        <div className={`pb-2 ${plegado ? "lg:px-2" : "px-3"}`}>
+          <Link
+            href="/ayuda"
+            aria-current={ruta === "/ayuda" ? "page" : undefined}
+            onClick={() => setAbierto(false)}
+            title={plegado ? "Ayuda" : undefined}
+            className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm ${
+              plegado ? "lg:justify-center lg:px-0" : ""
+            } ${
+              ruta === "/ayuda"
+                ? "bg-acento-suave font-medium text-acento-contraste"
+                : "text-medio hover:bg-superficie-alt hover:text-texto"
+            }`}
+          >
+            <Icono>
+              <circle cx="12" cy="12" r="10" />
+              <path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3" />
+              <path d="M12 17h.01" />
+            </Icono>
+            <span className={plegado ? "lg:hidden" : ""}>Ayuda</span>
+          </Link>
+        </div>
+
         <div className={`pb-3 ${plegado ? "lg:px-2" : "px-3"}`}>
           <SelectorTema compacto={plegado} />
         </div>

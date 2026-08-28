@@ -162,7 +162,7 @@ export default function ClienteDetallePage() {
 
   if (!cliente) {
     return (
-      <main className="mx-auto max-w-4xl p-8">
+      <main className="mx-auto max-w-4xl p-4 sm:p-8">
         <Link href="/clientes" className="text-sm text-suave">
           ← Clientes
         </Link>
@@ -175,7 +175,7 @@ export default function ClienteDetallePage() {
 
   if (editando && form) {
     return (
-      <main className="mx-auto max-w-4xl p-8">
+      <main className="mx-auto max-w-4xl p-4 sm:p-8">
         <Link href="/clientes" className="text-sm text-suave">
           ← Clientes
         </Link>
@@ -196,7 +196,7 @@ export default function ClienteDetallePage() {
   }
 
   return (
-    <main className="mx-auto max-w-4xl p-8">
+    <main className="mx-auto max-w-4xl p-4 sm:p-8">
       <Link href="/clientes" className="text-sm text-suave">
         ← Clientes
       </Link>

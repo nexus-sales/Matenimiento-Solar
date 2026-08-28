@@ -23,6 +23,7 @@ El registro de decisiones, con el motivo de cada una, está en
 - [Seguridad](#seguridad)
 - [Los módulos](#los-módulos)
 - [Despliegue](#despliegue)
+- [Aplicación instalable y responsive](#aplicación-instalable-y-responsive)
 - [Tema claro y oscuro](#tema-claro-y-oscuro)
 - [Qué falta](#qué-falta)
 
@@ -477,6 +478,59 @@ npm en Windows no materializa el subárbol WASM opcional de
 no describe el árbol que npm construye en Linux y **`npm ci` aborta**. Está
 comprobado en este proyecto, no es teórico. Ver el bloque de reglas en
 `AGENTS.md`.
+
+## Aplicación instalable y responsive
+
+### Instalable en el móvil
+
+Manifiesto en `src/app/manifest.ts`, iconos generados por
+`scripts/generar-iconos.py` (se dibujan en código para que el motivo quede
+versionado) y service worker en `public/sw.js`.
+
+`start_url` apunta a `/mantenimientos`, no a la raíz: quien instala esto en el
+móvil es el técnico, y lo primero que necesita es su lista de visitas.
+Instalada, se abre sin barra del navegador — unos 100 píxeles de alto que en un
+checklist con fotos se notan.
+
+### El service worker cachea muy poco, a propósito
+
+Solo `/_next/static`, cuyos archivos llevan un hash del contenido en el nombre
+y por tanto no pueden quedar obsoletos. **Ni el HTML ni nada de `/api`.**
+
+Esta aplicación registra visitas que se firman y quedan inmutables. Un checklist
+servido desde caché llevaría al técnico a firmar un estado que no es el de la
+base de datos. Cachear datos aquí no es una optimización: es un riesgo sobre un
+documento con valor de acta.
+
+Trabajar sin cobertura no se resuelve cacheando respuestas, sino encolando los
+cambios. Eso es una funcionalidad aparte, no está hecha, y no se finge.
+
+### Los recursos de la PWA van fuera del proxy
+
+El matcher de `src/proxy.ts` excluye el manifiesto, el service worker y las
+imágenes. El navegador los pide **antes** de que nadie inicie sesión: si el
+proxy los redirige al login, recibe HTML donde espera un JSON o una imagen, el
+worker no se registra y la aplicación deja de ser instalable — sin un solo
+error visible.
+
+Las fotos no se ven afectadas: van por `/api/fotos/<id>`, no tienen extensión y
+siguen protegidas.
+
+### Panel lateral
+
+Dos comportamientos distintos según el ancho:
+
+- **Móvil y tablet** (< 1024 px): barra superior con botón de menú. El panel se
+  superpone sobre un velo y se cierra al elegir destino.
+- **Escritorio**: siempre visible, y se puede **contraer a solo iconos** con el
+  botón inferior. La preferencia se recuerda.
+
+El desplazamiento del contenido lo calcula el CSS a partir de `data-sidebar` en
+el `<html>`, el mismo patrón que el tema. Así el layout no necesita ser cliente
+solo para saber el ancho de una barra.
+
+El zoom **no está bloqueado**: un técnico puede necesitar ampliar una foto o
+leer un CUPS a contraluz en una cubierta.
 
 ## Tema claro y oscuro
 

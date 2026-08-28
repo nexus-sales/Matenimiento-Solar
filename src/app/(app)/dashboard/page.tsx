@@ -43,7 +43,7 @@ export default function DashboardPage() {
   }, [cargar]);
 
   return (
-    <main className="mx-auto max-w-5xl p-8">
+    <main className="mx-auto max-w-5xl p-4 sm:p-8">
       <CabeceraPagina
         titulo="Dashboard"
         descripcion="Resumen del estado de mantenimiento de las instalaciones."

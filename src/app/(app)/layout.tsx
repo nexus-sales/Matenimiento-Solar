@@ -15,8 +15,9 @@ export default async function AppLayout({
   return (
     <div className="min-h-screen bg-fondo">
       <SidebarCliente nombre={sesion.nombre} rol={sesion.rol} />
-      {/* El sidebar es fijo, así que el contenido se desplaza su ancho. */}
-      <div className="pl-60">{children}</div>
+      {/* El desplazamiento lo calcula el CSS a partir de data-sidebar; ver
+          .contenido-app en globals.css. */}
+      <div className="contenido-app">{children}</div>
     </div>
   );
 }

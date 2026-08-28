@@ -70,7 +70,7 @@ function ListadoMantenimientos() {
   }, [cargar, estado]);
 
   return (
-    <main className="mx-auto max-w-5xl p-8">
+    <main className="mx-auto max-w-5xl p-4 sm:p-8">
       <CabeceraPagina
         titulo="Mantenimientos"
         descripcion="Visitas programadas y ejecutadas."

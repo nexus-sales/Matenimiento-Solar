@@ -87,7 +87,7 @@ export default function UsuariosClient() {
   }
 
   return (
-    <main className="max-w-5xl mx-auto p-8">
+    <main className="max-w-5xl mx-auto p-4 sm:p-8">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-semibold">Usuarios</h1>
         <button
@@ -105,7 +105,7 @@ export default function UsuariosClient() {
           onSubmit={crear}
           className="rounded-lg border border-borde bg-superficie p-4 mb-6 space-y-3"
         >
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className="block text-xs text-suave mb-1">
                 Nombre *

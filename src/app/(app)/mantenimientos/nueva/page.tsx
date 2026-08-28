@@ -112,7 +112,7 @@ function FormularioNuevaVisita() {
     "w-full rounded border border-borde-fuerte bg-superficie p-2 text-sm focus:border-acento focus:outline-none";
 
   return (
-    <main className="mx-auto max-w-2xl p-8">
+    <main className="mx-auto max-w-2xl p-4 sm:p-8">
       <Link href="/mantenimientos" className="text-sm text-suave">
         ← Mantenimientos
       </Link>

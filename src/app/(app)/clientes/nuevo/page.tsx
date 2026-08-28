@@ -40,7 +40,7 @@ export default function NuevoClientePage() {
   }
 
   return (
-    <main className="mx-auto max-w-4xl p-8">
+    <main className="mx-auto max-w-4xl p-4 sm:p-8">
       <Link href="/clientes" className="text-sm text-suave">
         ← Clientes
       </Link>

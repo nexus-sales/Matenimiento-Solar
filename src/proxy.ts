@@ -46,5 +46,21 @@ export function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  /*
+   * Quedan fuera de la protección los recursos estáticos y los de la
+   * aplicación instalable.
+   *
+   * El manifiesto, el service worker y los iconos los pide el navegador
+   * ANTES de que nadie inicie sesión. Si el proxy los redirige al login, el
+   * navegador recibe HTML donde espera un JSON o una imagen: el manifiesto
+   * no se interpreta, el worker no se registra y la aplicación deja de ser
+   * instalable — sin un solo error visible.
+   *
+   * No son datos: son la marca y el andamiaje. Las fotos, que sí son datos
+   * personales, van por /api/fotos y no tienen extensión, así que siguen
+   * protegidas.
+   */
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw\.js|.*\.(?:png|jpe?g|svg|webp|gif|ico|woff2?)$).*)",
+  ],
 };

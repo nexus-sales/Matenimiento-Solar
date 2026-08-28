@@ -53,7 +53,7 @@ function Icono({ tema }: { tema: Tema }) {
  * es el valor por defecto: si alguien pone el portátil en oscuro por la
  * noche, la app le acompaña sin tener que acordarse de venir aquí.
  */
-export default function SelectorTema() {
+export default function SelectorTema({ compacto = false }: { compacto?: boolean }) {
   // Se arranca en "sistema" y se corrige en cuanto monta: el servidor no
   // puede saber qué tema tiene guardado este navegador, y renderizar aquí
   // el valor real provocaría un desajuste de hidratación.
@@ -84,7 +84,9 @@ export default function SelectorTema() {
     <div
       role="radiogroup"
       aria-label="Tema de la interfaz"
-      className="flex rounded-md border border-borde p-0.5"
+      className={`flex rounded-md border border-borde p-0.5 ${
+        compacto ? "lg:flex-col" : ""
+      }`}
     >
       {TEMAS.map((opcion) => {
         const activo = tema === opcion.valor;

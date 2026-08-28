@@ -76,7 +76,7 @@ function ListaClientes() {
   const hayFiltros = Boolean(q || isla || mantenimiento);
 
   return (
-    <main className="mx-auto max-w-6xl p-8">
+    <main className="mx-auto max-w-6xl p-4 sm:p-8">
       <div className="mb-1 flex items-center justify-between">
         <h1 className="text-xl font-semibold">Clientes</h1>
         <Link

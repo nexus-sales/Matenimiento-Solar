@@ -189,3 +189,35 @@ option {
       color 150ms ease;
   }
 }
+
+/*
+ * Desplazamiento del contenido según el panel lateral.
+ *
+ * Se resuelve aquí y no con props porque el layout es un componente de
+ * servidor: el sidebar escribe `data-sidebar` en el <html> y el CSS
+ * reacciona, igual que hace el tema. Sin este acoplamiento, el layout
+ * tendría que volverse cliente solo para saber el ancho de una barra.
+ */
+.contenido-app {
+  /* Móvil y tablet: el panel se superpone, no desplaza. Lo que sí ocupa
+     sitio es la barra superior. */
+  padding-top: 3.5rem;
+}
+
+@media (min-width: 1024px) {
+  .contenido-app {
+    padding-top: 0;
+    padding-left: 15rem;
+    transition: padding-left 200ms ease;
+  }
+
+  :root[data-sidebar="plegado"] .contenido-app {
+    padding-left: 4rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .contenido-app {
+    transition: none;
+  }
+}

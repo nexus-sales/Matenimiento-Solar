@@ -239,7 +239,7 @@ export default function VisitaPage() {
 
   if (!visita || !cliente) {
     return (
-      <main className="mx-auto max-w-4xl p-8">
+      <main className="mx-auto max-w-4xl p-4 sm:p-8">
         <Link href="/mantenimientos" className="text-sm text-suave">
           ← Mantenimientos
         </Link>
@@ -263,7 +263,7 @@ export default function VisitaPage() {
   );
 
   return (
-    <main className="mx-auto max-w-4xl p-8">
+    <main className="mx-auto max-w-4xl p-4 sm:p-8">
       <Link href="/mantenimientos" className="text-sm text-suave">
         ← Mantenimientos
       </Link>

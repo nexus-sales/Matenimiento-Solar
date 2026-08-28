@@ -214,7 +214,7 @@ valor inventado.
 | `categoria_checklist` | paneles · estructura · inversor · cuadros_protecciones · baterias |
 | `plantilla` | mantenimiento · visita_previa · acta_obra |
 
-### `clientes` — 20 columnas
+### `clientes` — 21 columnas
 
 El núcleo de la aplicación. Una ficha contiene **todos** los datos del cliente,
 incluidos los de su instalación fotovoltaica. Los demás módulos leen de aquí.
@@ -223,7 +223,7 @@ incluidos los de su instalación fotovoltaica. Los demás módulos leen de aquí
 |---|---|
 | Alta | `fecha_alta` (por defecto hoy) |
 | Identificación | `nombre`, `documento` **único** |
-| Contacto | `direccion`, `codigo_postal`, `isla`, `provincia`, `email`, `telefono` |
+| Contacto | `direccion`, `poblacion`, `codigo_postal`, `isla`, `provincia`, `email`, `telefono` |
 | Instalación | `cups` **único**, `potencia_contratada`, `potencia_nominal`, `marca_inversor`, `numero_inversor`, `comercializadora`, `tiene_bateria` |
 | Servicio | `tiene_mantenimiento`, `comentarios` |
 

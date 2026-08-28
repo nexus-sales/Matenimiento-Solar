@@ -125,32 +125,67 @@ try {
   ok(`Roles ${ROL_APP} y ${ROL_AUTH} presentes`);
 
   // --- 1. migraciones -------------------------------------------------
+  //
+  // Se lleva registro de cuáles se han aplicado, en lugar de mirar si hay
+  // tablas. La versión anterior omitía TODAS las migraciones en cuanto
+  // existía una tabla: la primera se aplicaba y las siguientes nunca, sin
+  // avisar. Un esquema que se queda a medias en silencio es peor que uno
+  // que falla.
   paso("Migraciones");
   const migraciones = leerMigraciones();
   if (!migraciones.length) {
-    console.error(
-      "  No hay archivos .sql en src/db/migrations.\n" +
-        "  La imagen de producción no los incluye: hay que aplicar el esquema\n" +
-        "  por otra vía (por ejemplo, pegándolo en Adminer).\n"
-    );
+    console.error("  No hay archivos .sql en src/db/migrations.");
+    console.error("  La imagen de producción no los incluye: hay que aplicar");
+    console.error("  el esquema por otra vía.");
     process.exit(1);
   }
 
-  if (t.n > 0) {
-    aviso(`Ya hay ${t.n} tablas — se omiten las migraciones`);
+  if (!SIMULAR) {
+    await cliente.query(`
+      CREATE TABLE IF NOT EXISTS _migraciones (
+        nombre text PRIMARY KEY,
+        aplicada_en timestamptz NOT NULL DEFAULT now()
+      )
+    `);
+  }
+
+  let aplicadas = new Set();
+  const { rows: existeRegistro } = await cliente.query(
+    "select 1 from pg_tables where schemaname='public' and tablename='_migraciones'"
+  );
+  if (existeRegistro.length) {
+    const { rows } = await cliente.query("select nombre from _migraciones");
+    aplicadas = new Set(rows.map((r) => r.nombre));
+  } else if (t.n > 0) {
+    // Base creada antes de que existiera el registro: la primera migración
+    // ya está dentro, aunque no conste. Se da por aplicada para no intentar
+    // crear unas tablas que ya existen.
+    aplicadas = new Set([migraciones[0].nombre]);
+    aviso(`Base preexistente: se da por aplicada ${migraciones[0].nombre}`);
+  }
+
+  const pendientes = migraciones.filter((m) => !aplicadas.has(m.nombre));
+
+  if (!pendientes.length) {
+    aviso("Sin migraciones pendientes");
   } else if (SIMULAR) {
-    aviso(`Se aplicarían ${migraciones.length} migración(es)`);
+    for (const m of pendientes) aviso(`Se aplicaría ${m.nombre}`);
   } else {
-    for (const m of migraciones) {
+    for (const m of pendientes) {
       // Drizzle separa las sentencias con este marcador.
       const sentencias = m.sql
         .split("--> statement-breakpoint")
         .map((s) => s.trim())
         .filter(Boolean);
       for (const s of sentencias) await cliente.query(s);
+      await cliente.query(
+        "insert into _migraciones (nombre) values ($1) on conflict do nothing",
+        [m.nombre]
+      );
       ok(`${m.nombre} — ${sentencias.length} sentencias`);
     }
   }
+
 
   // --- 2. permisos ----------------------------------------------------
   paso("Permisos");

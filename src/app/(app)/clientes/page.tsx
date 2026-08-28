@@ -12,6 +12,7 @@ type Cliente = {
   documento: string;
   telefono: string | null;
   isla: string | null;
+  poblacion: string | null;
   cups: string | null;
   potenciaNominal: string | null;
   tieneMantenimiento: boolean;
@@ -157,7 +158,9 @@ function ListaClientes() {
                   )}
                 </div>
                 <p className="mt-0.5 text-xs text-suave">
-                  {[c.documento, c.isla, c.telefono].filter(Boolean).join(" · ")}
+                  {[c.documento, c.poblacion, c.isla, c.telefono]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </p>
                 <p className="mt-0.5 font-mono text-xs text-tenue">
                   {c.cups ?? "Sin CUPS"}

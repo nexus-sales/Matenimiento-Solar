@@ -52,6 +52,7 @@ export const esquemaCliente = z
         "Documento inválido: revisa el formato y la letra de control."
       ),
     direccion: vacioComoNulo,
+    poblacion: vacioComoNulo,
     codigoPostal: z
       .union([
         z
@@ -125,6 +126,7 @@ export function valoresCliente(d: DatosCliente) {
     nombre: d.nombre,
     documento: d.documento,
     direccion: d.direccion,
+    poblacion: d.poblacion,
     codigoPostal: d.codigoPostal,
     isla: d.isla,
     provincia: provinciaDeIsla(d.isla),

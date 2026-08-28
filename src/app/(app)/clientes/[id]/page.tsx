@@ -17,6 +17,7 @@ type Cliente = {
   nombre: string;
   documento: string;
   direccion: string | null;
+  poblacion: string | null;
   codigoPostal: string | null;
   isla: string | null;
   provincia: string | null;
@@ -255,13 +256,19 @@ export default function ClienteDetallePage() {
           <Dato etiqueta="Email" valor={cliente.email || "—"} />
           <Dato etiqueta="Isla" valor={cliente.isla || "—"} />
           <Dato etiqueta="Provincia" valor={cliente.provincia || "—"} />
-          <div className="col-span-2 sm:col-span-3">
+          <div className="col-span-2 sm:col-span-4">
             <dt className="text-xs text-tenue">Dirección</dt>
             <dd className="text-sm text-texto">
-              {cliente.direccion || "—"}
+              {[
+                cliente.direccion,
+                [cliente.codigoPostal, cliente.poblacion]
+                  .filter(Boolean)
+                  .join(" "),
+              ]
+                .filter(Boolean)
+                .join(" · ") || "—"}
             </dd>
           </div>
-          <Dato etiqueta="Código postal" valor={cliente.codigoPostal || "—"} />
         </Bloque>
 
         <Bloque titulo="Instalación">

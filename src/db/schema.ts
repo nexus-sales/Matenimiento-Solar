@@ -92,6 +92,7 @@ export const clientes = pgTable("clientes", {
   nombre: text("nombre").notNull(),
   documento: text("documento").notNull().unique(), // NIF / NIE / CIF
   direccion: text("direccion"),
+  poblacion: text("poblacion"),
   codigoPostal: text("codigo_postal"),
   isla: islaEnum("isla"),
   // Se calcula a partir de la isla (ver provinciaDeIsla en @/lib/islas);

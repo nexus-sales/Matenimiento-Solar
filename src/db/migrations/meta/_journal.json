@@ -8,6 +8,13 @@
       "when": 1787834097601,
       "tag": "0000_esquema_inicial",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1787919165219,
+      "tag": "0001_poblacion_cliente",
+      "breakpoints": true
     }
   ]
 }

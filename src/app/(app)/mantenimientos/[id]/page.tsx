@@ -52,6 +52,8 @@ type Cliente = {
   id: string;
   nombre: string;
   direccion: string | null;
+  poblacion: string | null;
+  codigoPostal: string | null;
   isla: string | null;
   cups: string | null;
   marcaInversor: string | null;
@@ -262,7 +264,16 @@ export default function VisitaPage() {
       <dl className="mb-5 grid grid-cols-2 gap-x-6 gap-y-2 rounded-lg border border-borde bg-superficie p-4 text-xs sm:grid-cols-4">
         <div className="col-span-2">
           <dt className="text-tenue">Dirección</dt>
-          <dd className="text-texto">{cliente.direccion || "—"}</dd>
+          <dd className="text-texto">
+            {[
+              cliente.direccion,
+              [cliente.codigoPostal, cliente.poblacion]
+                .filter(Boolean)
+                .join(" "),
+            ]
+              .filter(Boolean)
+              .join(" · ") || "—"}
+          </dd>
         </div>
         <div>
           <dt className="text-tenue">Isla</dt>

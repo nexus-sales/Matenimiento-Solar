@@ -19,6 +19,7 @@ export type ClienteFormulario = {
   nombre: string;
   documento: string;
   direccion: string;
+  poblacion: string;
   codigoPostal: string;
   isla: string;
   email: string;
@@ -47,6 +48,7 @@ export function formularioVacio(): ClienteFormulario {
     nombre: "",
     documento: "",
     direccion: "",
+    poblacion: "",
     codigoPostal: "",
     isla: "",
     email: "",
@@ -73,6 +75,7 @@ export function formularioDesdeCliente(
     nombre: texto(c.nombre),
     documento: texto(c.documento),
     direccion: texto(c.direccion),
+    poblacion: texto(c.poblacion),
     codigoPostal: texto(c.codigoPostal),
     isla: texto(c.isla),
     email: texto(c.email),
@@ -96,6 +99,7 @@ export function cuerpoCliente(v: ClienteFormulario) {
     nombre: v.nombre,
     documento: v.documento,
     direccion: v.direccion,
+    poblacion: v.poblacion,
     codigoPostal: v.codigoPostal,
     isla: v.isla,
     email: v.email,
@@ -256,6 +260,27 @@ export function FormularioCliente({
             className={CLASE_CAMPO}
           />
         </Campo>
+        <Campo etiqueta="Población" ayuda="Municipio o localidad">
+          <input
+            value={valor.poblacion}
+            onChange={(e) => set("poblacion", e.target.value)}
+            className={CLASE_CAMPO}
+          />
+        </Campo>
+        <Campo etiqueta="Código postal">
+          <input
+            inputMode="numeric"
+            maxLength={5}
+            value={valor.codigoPostal}
+            onChange={(e) =>
+              set("codigoPostal", e.target.value.replace(/[^0-9]/g, ""))
+            }
+            className={CLASE_CAMPO}
+          />
+          {avisoCP && (
+            <p className="mt-1 text-xs text-aviso-contraste">{avisoCP}</p>
+          )}
+        </Campo>
         <Campo etiqueta="Isla">
           <select
             value={valor.isla}
@@ -277,20 +302,6 @@ export function FormularioCliente({
             placeholder="—"
             className="w-full rounded border border-borde bg-superficie-alt p-2 text-sm text-suave"
           />
-        </Campo>
-        <Campo etiqueta="Código postal">
-          <input
-            inputMode="numeric"
-            maxLength={5}
-            value={valor.codigoPostal}
-            onChange={(e) =>
-              set("codigoPostal", e.target.value.replace(/[^0-9]/g, ""))
-            }
-            className={CLASE_CAMPO}
-          />
-          {avisoCP && (
-            <p className="mt-1 text-xs text-aviso-contraste">{avisoCP}</p>
-          )}
         </Campo>
         <Campo etiqueta="Teléfono">
           <input

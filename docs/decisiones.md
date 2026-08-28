@@ -358,3 +358,55 @@ desplegable salía vacío y bloqueaba una asignación legítima.
 
 Ahora se muestran todos, con los de la isla primero y el resto agrupados bajo
 «Con desplazamiento». Filtrar por conveniencia estaba impidiendo el caso real.
+
+---
+
+## Deuda consciente — llevar la aplicación fuera de Canarias
+
+**Estado: no hecho, a propósito.** Anotado para que el día que aparezca un
+cliente peninsular no se empiece de cero.
+
+### Qué ata hoy la aplicación a Canarias
+
+1. **`isla` es un tipo `enum` de PostgreSQL** con ocho valores, usado en
+   `clientes.isla` y `usuarios.isla`.
+2. **`provincia` se deriva de la isla** (`provinciaDeIsla` en `src/lib/islas.ts`)
+   y es otro enum, con dos valores.
+3. **El código postal se valida contra la isla** (`desajusteCodigoPostal`).
+4. **El técnico se asigna por isla**, que es el concepto operativo: un técnico
+   no se desplaza entre islas a diario.
+
+### La abstracción correcta
+
+Una **«zona operativa»**: en Canarias es la isla, en la península es la
+provincia. Es el ámbito en el que un técnico trabaja sin desplazamiento
+extraordinario, que es para lo que se usa de verdad.
+
+### Por qué no se hace ahora
+
+- **Sería especulativo.** No se sabe qué necesita esa segunda empresa, y hay
+  riesgo real de inventar una abstracción que no encaje con su caso.
+  Generalizar sin el segundo ejemplo delante es el error clásico.
+- **Esperar no encarece.** La migración cuesta prácticamente lo mismo hoy que
+  con mil clientes dentro: columna nueva, migrar datos, retirar el enum.
+
+### Lo que ya juega a favor
+
+**El código postal es universal en España** y sus dos primeros dígitos son el
+código de provincia, en Canarias y en Cuenca. Ya se guarda y se valida, así
+que la información geográfica real está en la base de datos y no hay que
+pedirla otra vez.
+
+### Plan de migración, cuando toque
+
+1. Tabla `zonas` (`codigo`, `nombre`, `provincia`), sembrada por despliegue:
+   las 8 islas para SR Energía, las 52 provincias para un cliente peninsular.
+2. `clientes.zona_id` y `usuarios.zona_id` en lugar de los enums.
+3. `provincia` pasa a derivarse del código postal, no de la isla — regla que
+   funciona en todo el país.
+4. Retirar `provinciaDeIsla` y `desajusteCodigoPostal`, sustituidos por la
+   comprobación de que el código postal pertenece a la provincia de la zona.
+5. Retirar los tipos `isla` y `provincia`.
+
+Los textos de la interfaz que dicen «isla» pasarían a decir «zona», salvo que
+se quiera mantener el término por despliegue.

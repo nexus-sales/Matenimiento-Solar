@@ -591,6 +591,11 @@ temas.
 3. **Envío automático del acta.** Hoy el administrador la descarga y la manda
    él junto con la factura, que es como quiere trabajar SR Energía. Si algún día
    se quiere automatizar, hará falta un servidor de correo.
-4. **Reabrir una visita firmada.** Hoy no se puede, a propósito. Si alguien firma
+4. **Llevar la aplicación fuera de Canarias.** La isla es un tipo enumerado y
+   la provincia se deriva de ella, así que un cliente peninsular exigiría
+   generalizar a «zona operativa». Es deuda consciente: el plan de migración
+   está escrito en [`docs/decisiones.md`](docs/decisiones.md), y esperar no
+   encarece el trabajo.
+5. **Reabrir una visita firmada.** Hoy no se puede, a propósito. Si alguien firma
    por error, la única salida es borrar la visita. Falta decidir si se quiere una
    vía y con qué control.

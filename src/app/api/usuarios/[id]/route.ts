@@ -6,22 +6,13 @@ import { eq } from "drizzle-orm";
 import { obtenerSesion } from "@/lib/auth";
 import { hashPassword } from "@/lib/password";
 import { exigirAdmin } from "@/lib/permisos";
-import { campoIsla } from "@/lib/esquemas";
-import { validarDocumento } from "@/lib/validacion";
+import { campoDocumentoOpcional, campoIsla } from "@/lib/esquemas";
 
 const esquemaActualizar = z.object({
   nombre: z.string().min(1).optional(),
   rol: z.enum(["admin", "oficina", "tecnico"]).optional(),
-  // Opcional, pero si viene tiene que ser un documento real: aparece en
-  // las actas firmadas.
-  documento: z
-    .union([
-      z.string().transform((v) => v.trim().toUpperCase()).refine(validarDocumento, "Documento inválido."),
-      z.literal(""),
-      z.null(),
-    ])
-    .optional()
-    .transform((v) => v || null),
+  // Si viene tiene que ser un documento real: aparece en las actas firmadas.
+  documento: campoDocumentoOpcional,
   isla: campoIsla,
   activo: z.boolean().optional(),
   password: z.string().min(8).optional(), // opcional: solo si se resetea

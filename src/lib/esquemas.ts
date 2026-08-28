@@ -23,11 +23,35 @@ const numeroOpcional = z
   .optional()
   .transform((v) => (v === "" || v === undefined || v === null ? null : v));
 
+/**
+ * Isla opcional.
+ *
+ * OJO con la transformación: distingue `undefined` de `""`. En una
+ * actualización parcial, un campo que NO viene significa "no lo toques", y
+ * uno que viene vacío significa "bórralo". Colapsar los dos a `null` hacía
+ * que editar solo el nombre de un usuario le borrara la isla.
+ */
 export const campoIsla = z
   .union([z.enum(ISLAS_CANARIAS), z.literal("")])
   .nullable()
   .optional()
-  .transform((v) => v || null);
+  .transform((v) => (v === undefined ? undefined : v || null));
+
+/**
+ * NIF/NIE/CIF opcional, validado de verdad cuando viene. Mismo cuidado con
+ * `undefined` que arriba.
+ */
+export const campoDocumentoOpcional = z
+  .union([
+    z
+      .string()
+      .transform((v) => v.trim().toUpperCase())
+      .refine(validarDocumento, "Documento inválido."),
+    z.literal(""),
+    z.null(),
+  ])
+  .optional()
+  .transform((v) => (v === undefined ? undefined : v || null));
 
 /**
  * Ficha completa de cliente. Es la única definición de qué es un cliente

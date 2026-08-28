@@ -5,24 +5,15 @@ import { usuarios } from "@/db/schema";
 import { obtenerSesion } from "@/lib/auth";
 import { hashPassword } from "@/lib/password";
 import { exigirAdmin } from "@/lib/permisos";
-import { campoIsla } from "@/lib/esquemas";
-import { validarDocumento } from "@/lib/validacion";
+import { campoDocumentoOpcional, campoIsla } from "@/lib/esquemas";
 
 const esquemaUsuario = z.object({
   nombre: z.string().min(1, "El nombre es obligatorio.").max(200),
   email: z.string().email(),
   password: z.string().min(8, "Mínimo 8 caracteres."),
   rol: z.enum(["admin", "oficina", "tecnico"]),
-  // Opcional, pero si viene tiene que ser un documento real: aparece en
-  // las actas firmadas.
-  documento: z
-    .union([
-      z.string().transform((v) => v.trim().toUpperCase()).refine(validarDocumento, "Documento inválido."),
-      z.literal(""),
-      z.null(),
-    ])
-    .optional()
-    .transform((v) => v || null),
+  // Si viene tiene que ser un documento real: aparece en las actas firmadas.
+  documento: campoDocumentoOpcional,
   isla: campoIsla,
 });
 

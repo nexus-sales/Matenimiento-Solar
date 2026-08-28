@@ -14,6 +14,9 @@ type Usuario = {
   activo: boolean;
 };
 
+const CLASE_CAMPO =
+  "w-full rounded border border-borde-fuerte bg-superficie p-2 text-sm focus:border-acento focus:outline-none";
+
 const ROL_LABEL: Record<Usuario["rol"], string> = {
   admin: "Admin",
   oficina: "Oficina",
@@ -26,6 +29,16 @@ export default function UsuariosClient() {
   const [error, setError] = useState<string | null>(null);
   const [mostrarForm, setMostrarForm] = useState(false);
   const [guardando, setGuardando] = useState(false);
+
+  // Edición en línea: se despliega bajo el usuario elegido. Una pantalla
+  // aparte para cuatro campos sería un rodeo.
+  const [editando, setEditando] = useState<string | null>(null);
+  const [edicion, setEdicion] = useState({
+    nombre: "",
+    documento: "",
+    rol: "tecnico" as Usuario["rol"],
+    isla: "",
+  });
 
   const [form, setForm] = useState({
     nombre: "",
@@ -79,6 +92,45 @@ export default function UsuariosClient() {
       isla: "",
     });
     setMostrarForm(false);
+    cargar();
+  }
+
+  function empezarEdicion(u: Usuario) {
+    setError(null);
+    setEditando(u.id);
+    setEdicion({
+      nombre: u.nombre,
+      documento: u.documento ?? "",
+      rol: u.rol,
+      isla: u.isla ?? "",
+    });
+  }
+
+  async function guardarEdicion(id: string) {
+    setError(null);
+    setGuardando(true);
+
+    const res = await fetch(`/api/usuarios/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nombre: edicion.nombre,
+        documento: edicion.documento,
+        rol: edicion.rol,
+        // La isla solo aplica a técnicos; en otro rol se manda vacía para
+        // que quede limpia si el usuario cambia de puesto.
+        isla: edicion.rol === "tecnico" ? edicion.isla : "",
+      }),
+    });
+
+    setGuardando(false);
+
+    if (!res.ok) {
+      setError(await leerErrorApi(res, "No se pudo guardar el usuario."));
+      return;
+    }
+
+    setEditando(null);
     cargar();
   }
 
@@ -213,10 +265,8 @@ export default function UsuariosClient() {
       ) : (
         <div className="divide-y divide-borde overflow-hidden rounded-lg border border-borde bg-superficie">
           {usuarios.map((u) => (
-            <div
-              key={u.id}
-              className="p-3 flex items-center justify-between gap-3"
-            >
+            <div key={u.id}>
+            <div className="flex items-center justify-between gap-3 p-3">
               <div>
                 <p className="text-sm font-medium">
                   {u.nombre}{" "}
@@ -231,13 +281,98 @@ export default function UsuariosClient() {
                   {u.isla ? ` · ${u.isla}` : ""}
                 </p>
               </div>
-              <button
-                onClick={() => cambiarActivo(u, !u.activo)}
-                className="text-xs border rounded px-2 py-1 flex-shrink-0"
-              >
-                {u.activo ? "Desactivar" : "Reactivar"}
-              </button>
+              <div className="flex shrink-0 gap-2">
+                <button
+                  onClick={() =>
+                    editando === u.id ? setEditando(null) : empezarEdicion(u)
+                  }
+                  className="rounded border border-borde-fuerte px-2 py-1 text-xs hover:bg-superficie-alt"
+                >
+                  {editando === u.id ? "Cancelar" : "Editar"}
+                </button>
+                <button
+                  onClick={() => cambiarActivo(u, !u.activo)}
+                  className="rounded border border-borde-fuerte px-2 py-1 text-xs hover:bg-superficie-alt"
+                >
+                  {u.activo ? "Desactivar" : "Reactivar"}
+                </button>
+              </div>
             </div>
+
+            {editando === u.id && (
+              <div className="border-t border-borde bg-superficie-alt p-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-xs text-suave">
+                      Nombre
+                    </label>
+                    <input
+                      value={edicion.nombre}
+                      onChange={(e) =>
+                        setEdicion({ ...edicion, nombre: e.target.value })
+                      }
+                      className={CLASE_CAMPO}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs text-suave">
+                      Documento
+                    </label>
+                    <input
+                      value={edicion.documento}
+                      onChange={(e) =>
+                        setEdicion({
+                          ...edicion,
+                          documento: e.target.value.toUpperCase(),
+                        })
+                      }
+                      placeholder="NIF, NIE o CIF"
+                      className={CLASE_CAMPO}
+                    />
+                    <p className="mt-1 text-xs text-tenue">
+                      Aparece en las actas que firma
+                    </p>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs text-suave">Rol</label>
+                    <select
+                      value={edicion.rol}
+                      onChange={(e) =>
+                        setEdicion({
+                          ...edicion,
+                          rol: e.target.value as Usuario["rol"],
+                        })
+                      }
+                      className={CLASE_CAMPO}
+                    >
+                      <option value="tecnico">Técnico</option>
+                      <option value="oficina">Oficina</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </div>
+                  {edicion.rol === "tecnico" && (
+                    <div>
+                      <label className="mb-1 block text-xs text-suave">
+                        Isla
+                      </label>
+                      <SelectIsla
+                        value={edicion.isla}
+                        onChange={(isla) => setEdicion({ ...edicion, isla })}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => guardarEdicion(u.id)}
+                  disabled={guardando}
+                  className="mt-3 rounded bg-acento px-3 py-1.5 text-sm text-acento-encima hover:bg-acento-hover disabled:opacity-50"
+                >
+                  {guardando ? "Guardando…" : "Guardar cambios"}
+                </button>
+              </div>
+            )}
+          </div>
           ))}
         </div>
       )}

@@ -79,12 +79,20 @@ function ListaClientes() {
     <main className="mx-auto max-w-6xl p-4 sm:p-8">
       <div className="mb-1 flex items-center justify-between">
         <h1 className="text-xl font-semibold">Clientes</h1>
-        <Link
-          href="/clientes/nuevo"
-          className="rounded bg-acento px-3 py-1.5 text-sm text-acento-encima hover:bg-acento-hover"
-        >
-          + Nuevo cliente
-        </Link>
+        <div className="flex shrink-0 gap-2">
+          <Link
+            href="/clientes/importar"
+            className="rounded border border-borde-fuerte px-3 py-1.5 text-sm text-medio hover:bg-superficie-alt"
+          >
+            Importar
+          </Link>
+          <Link
+            href="/clientes/nuevo"
+            className="rounded bg-acento px-3 py-1.5 text-sm text-acento-encima hover:bg-acento-hover"
+          >
+            + Nuevo cliente
+          </Link>
+        </div>
       </div>
       <p className="mb-5 text-sm text-suave">
         La ficha de cliente contiene todos sus datos. Los mantenimientos y

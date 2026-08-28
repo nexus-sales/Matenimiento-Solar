@@ -149,6 +149,13 @@ function BloqueOficina() {
             no se le pueden programar visitas.
           </Paso>
         </ol>
+
+        <p className="mt-4 border-t border-borde pt-4 text-sm text-suave">
+          <strong className="text-texto">¿Tienes la cartera en un Excel?</strong>{" "}
+          Clientes → Importar. Se lee el archivo y se enseña fila por fila qué
+          va a pasar <em>antes</em> de escribir nada: cuáles son nuevos, cuáles
+          ya están y cuáles tienen algún dato mal. Solo entonces se confirma.
+        </p>
       </Seccion>
 
       <Seccion

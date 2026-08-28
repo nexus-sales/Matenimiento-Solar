@@ -421,6 +421,25 @@ principio** —lo que la oficina necesita sin recorrer las 24 filas—, el regis
 punto por punto con sus fotos y observaciones, y las dos firmas con nombre y
 documento.
 
+### Importar clientes desde Excel
+
+`Clientes → Importar`. Reconoce las columnas por su nombre, en cualquier orden y
+con variantes (`DNI`, `Documento`, `NIF`), y **analiza sin escribir**: enseña
+fila por fila cuáles son nuevos, cuáles ya existen y cuáles tienen un dato mal,
+con el motivo. Solo entonces se confirma.
+
+Es deliberado. Una importación masiva que escribe antes de que nadie vea el
+resultado es la forma más rápida de ensuciar la base con cientos de fichas mal,
+y deshacerlo cuesta mucho más que mirarlo antes.
+
+La escritura va en **una transacción**: o entran todas las filas válidas o no
+entra ninguna. Las filas con error no se importan y las demás sí, así que se
+puede corregir el Excel y volver a subirlo — lo ya importado no se duplica.
+
+Si un cliente ya existe, quien importa elige entre saltarlo o actualizarlo. Si
+el propio archivo repite un documento, se rechaza: no hay forma de saber cuál de
+las dos filas vale.
+
 ### Ayuda
 
 Página `/ayuda` dentro de la aplicación, enlazada desde el panel lateral.
@@ -589,8 +608,6 @@ temas.
 
 ## Qué falta
 
-1. **Importación del Excel.** Las claves únicas (documento, CUPS) ya están en el
-   modelo; falta el importador.
 4. **Módulo de obras nuevas** — informe de visita previa y acta de finalización.
    Van los últimos a propósito: las fotos y el PDF son la maquinaria que más
    necesitan, así que se construye una vez y sirve para los tres.

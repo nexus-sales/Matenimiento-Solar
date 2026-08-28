@@ -351,6 +351,30 @@ export default function ClienteDetallePage() {
                 {v.tecnicoNombre ?? "Sin técnico asignado"}
                 {v.firmado ? " · Firmada" : ""}
               </p>
+              {v.firmado && (
+                <span
+                  role="link"
+                  tabIndex={0}
+                  onClick={(ev) => {
+                    // El histórico es una lista de enlaces a la visita; el
+                    // acta es un destino distinto, así que se corta la
+                    // navegación del enlace que lo envuelve.
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    window.open(`/api/mantenimientos/${v.id}/informe`, "_blank");
+                  }}
+                  onKeyDown={(ev) => {
+                    if (ev.key === "Enter") {
+                      ev.preventDefault();
+                      ev.stopPropagation();
+                      window.open(`/api/mantenimientos/${v.id}/informe`, "_blank");
+                    }
+                  }}
+                  className="mt-1 inline-block cursor-pointer text-xs text-acento-contraste underline-offset-2 hover:underline"
+                >
+                  Descargar acta en PDF
+                </span>
+              )}
             </Link>
           ))}
         </div>

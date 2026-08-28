@@ -517,6 +517,30 @@ export default function VisitaPage() {
             {visita.firmanteTecnicoNombre} (SR Energía) y{" "}
             {visita.firmanteClienteNombre} (cliente).
           </p>
+
+          {/* El acta se abre en otra pestaña en vez de descargarse a la
+              fuerza: así se puede revisar antes de reenviarla al cliente. */}
+          <a
+            href={`/api/mantenimientos/${id}/informe`}
+            target="_blank"
+            rel="noopener"
+            className="mt-3 inline-flex items-center gap-2 rounded bg-acento px-3 py-2 text-sm text-acento-encima hover:bg-acento-hover"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.8}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+              className="h-4 w-4"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <path d="M7 10l5 5 5-5M12 15V3" />
+            </svg>
+            Descargar acta en PDF
+          </a>
         </div>
       ) : (
         <div className="rounded-lg border border-borde bg-superficie p-5">

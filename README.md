@@ -402,6 +402,25 @@ aparte**: un cliente con dos suministros son dos fichas.
   con mala cobertura, perder media hora de trabajo no es aceptable.
 - La pantalla abre con dirección, isla, CUPS, inversor y batería a la vista.
 
+### El acta en PDF
+
+Al firmar, la visita queda cerrada y el administrador puede descargar el acta
+desde la propia visita o desde el histórico del cliente.
+
+Se genera con `@react-pdf/renderer`, **no con un navegador sin ventana**: la
+alternativa habitual (Puppeteer) da mejor fidelidad pero se trae unos 300 MB de
+Chromium y bastante memoria, y el servidor aloja diecisiete servicios.
+
+**Se genera en la primera descarga y se guarda**, no al firmar. Generarla al
+firmar haría esperar al técnico en la cubierta mientras se componen las fotos;
+generarla en cada descarga repetiría ese trabajo. Guardarla es seguro porque una
+visita firmada es inmutable: el archivo no puede quedar desactualizado.
+
+Contiene los datos del cliente y la instalación, un **resumen de incidencias al
+principio** —lo que la oficina necesita sin recorrer las 24 filas—, el registro
+punto por punto con sus fotos y observaciones, y las dos firmas con nombre y
+documento.
+
 ### Usuarios
 
 Solo admin. Alta, cambio de rol e isla, activar y desactivar. Un admin no puede
@@ -561,15 +580,7 @@ temas.
 
 ## Qué falta
 
-1. **Subida y compresión de fotos.** El modelo ya admite varias por punto
-   (`respuesta_foto`, con pie y orden) y el botón está en su sitio, deshabilitado
-   a la espera del almacenamiento S3-compatible. Es el único lugar de la interfaz
-   que muestra algo que todavía no funciona, y está marcado como tal. Está
-   pendiente decidir dónde se guardan: MinIO en el servidor propio, un bucket de
-   proveedor, o disco del VPS.
-2. **Generación del PDF + envío a oficina.** Va junto con las fotos: el peso de
-   los informes de referencia son las fotos (24 y 46 en los ejemplos de `docs/`).
-3. **Importación del Excel.** Las claves únicas (documento, CUPS) ya están en el
+1. **Importación del Excel.** Las claves únicas (documento, CUPS) ya están en el
    modelo; falta el importador.
 4. **Módulo de obras nuevas** — informe de visita previa y acta de finalización.
    Van los últimos a propósito: las fotos y el PDF son la maquinaria que más
@@ -577,5 +588,9 @@ temas.
    El catálogo ya tiene `plantilla` preparado, pero necesitarán además una
    columna de **tipo de campo**: esos formularios piden medidas, metros y
    desplegables, no solo estados. Ver `docs/decisiones.md`.
-5. **HTTPS en el subdominio.** Obligatorio antes de las fotos: el navegador
-   del móvil bloquea el acceso a la cámara sin certificado.
+3. **Envío automático del acta.** Hoy el administrador la descarga y la manda
+   él junto con la factura, que es como quiere trabajar SR Energía. Si algún día
+   se quiere automatizar, hará falta un servidor de correo.
+4. **Reabrir una visita firmada.** Hoy no se puede, a propósito. Si alguien firma
+   por error, la única salida es borrar la visita. Falta decidir si se quiere una
+   vía y con qué control.

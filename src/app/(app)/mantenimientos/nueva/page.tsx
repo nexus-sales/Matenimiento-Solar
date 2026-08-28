@@ -75,11 +75,16 @@ function FormularioNuevaVisita() {
 
   const cliente = clientes.find((c) => c.id === form.clienteId);
 
-  // Se sugiere el técnico de la isla del cliente, pero no se impone: un
-  // desplazamiento entre islas es raro, no imposible.
-  const tecnicosDeLaIsla = cliente?.isla
+  // Nunca se oculta a nadie: en islas pequeñas no hay técnico fijo y se
+  // desplaza uno de las capitalinas. Filtrar por isla dejaba el desplegable
+  // vacío y bloqueaba una asignación perfectamente legítima.
+  //
+  // Se ordenan poniendo primero los de la isla del cliente, que es la
+  // elección habitual, y el resto detrás marcados como desplazamiento.
+  const deLaIsla = cliente?.isla
     ? tecnicos.filter((t) => t.isla === cliente.isla)
-    : tecnicos;
+    : [];
+  const deOtrasIslas = tecnicos.filter((t) => !deLaIsla.includes(t));
 
   async function crear(e: React.FormEvent) {
     e.preventDefault();
@@ -200,16 +205,44 @@ function FormularioNuevaVisita() {
               className={claseCampo}
             >
               <option value="">— Sin asignar todavía —</option>
-              {tecnicosDeLaIsla.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.nombre}
-                  {t.isla ? ` · ${t.isla}` : ""}
-                </option>
-              ))}
+
+              {deLaIsla.length > 0 && (
+                <optgroup label={`En ${cliente?.isla}`}>
+                  {deLaIsla.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.nombre}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+
+              {deOtrasIslas.length > 0 && (
+                <optgroup
+                  label={
+                    deLaIsla.length > 0
+                      ? "Con desplazamiento"
+                      : "Todos los técnicos"
+                  }
+                >
+                  {deOtrasIslas.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.nombre}
+                      {t.isla ? ` · ${t.isla}` : ""}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
             </select>
-            {cliente?.isla && tecnicosDeLaIsla.length === 0 && (
+
+            {cliente?.isla && deLaIsla.length === 0 && tecnicos.length > 0 && (
+              <p className="mt-1 text-xs text-suave">
+                No hay técnico fijo en {cliente.isla}: se asignará uno con
+                desplazamiento.
+              </p>
+            )}
+            {tecnicos.length === 0 && (
               <p className="mt-1 text-xs text-aviso-contraste">
-                No hay técnicos asignados a {cliente.isla}.
+                No hay técnicos activos. Créalos en Usuarios.
               </p>
             )}
           </div>

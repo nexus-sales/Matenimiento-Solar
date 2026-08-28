@@ -14,6 +14,7 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import { obtenerSesion } from "@/lib/auth";
 import { exigirRolEscritura } from "@/lib/permisos";
 import { esquemaTipoVisita, itemAplicaAVisita } from "@/lib/checklist";
+import { ALMACENAMIENTO_CONFIGURADO, borrarFoto } from "@/lib/almacenamiento";
 
 export async function GET(
   _req: NextRequest,
@@ -204,11 +205,25 @@ export async function PUT(
       .limit(1);
 
     if (!visita) return { error: "Visita no encontrada.", estado: 404 };
+
+    // Una visita firmada es inmutable EN LO QUE SE FIRMÓ: el checklist, las
+    // observaciones, las fotos y las fechas de la intervención.
+    //
+    // El número de factura no es eso. Lo asigna la oficina después, al
+    // facturar, y el cliente no lo firmó. Tratarlo como parte del acta lo
+    // dejaba imposible de rellenar: aparecía en el documento y no había
+    // manera de ponerlo nunca.
     if (visita.firmado) {
-      return {
-        error: "La visita ya está firmada y no admite cambios.",
-        estado: 409,
-      };
+      const soloFactura =
+        Object.keys(cambios).length === 1 && "numeroFactura" in cambios;
+
+      if (!soloFactura) {
+        return {
+          error:
+            "La visita ya está firmada: solo puede modificarse el número de factura.",
+          estado: 409,
+        };
+      }
     }
 
     // La clave foránea solo garantiza que el usuario exista. Sin esta
@@ -236,7 +251,7 @@ export async function PUT(
       .where(eq(mantenimientos.id, id))
       .returning();
 
-    return { fila };
+    return { fila, facturaCambiada: "numeroFactura" in cambios };
   });
 
   if ("error" in resultado && resultado.error) {
@@ -244,6 +259,17 @@ export async function PUT(
       { error: resultado.error },
       { status: resultado.estado }
     );
+  }
+
+  // El acta guardada lleva el número de factura impreso: si cambia, la que
+  // hay almacenada deja de ser correcta. Se borra para que se regenere en la
+  // siguiente descarga.
+  if (resultado.facturaCambiada && ALMACENAMIENTO_CONFIGURADO) {
+    try {
+      await borrarFoto(`visitas/${id}/informe.pdf`);
+    } catch {
+      // Si no existía, no hay nada que invalidar.
+    }
   }
 
   return NextResponse.json(resultado.fila);

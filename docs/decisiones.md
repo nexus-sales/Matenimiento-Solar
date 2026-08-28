@@ -331,3 +331,30 @@ patrón que ya sigue el resto de aplicaciones del servidor.
 
 Convertirla en multiinquilino exigiría tocar las siete tablas y las quince
 políticas. No está hecho y no está previsto de momento.
+
+---
+
+## 2026-08-28 — Qué congela una firma, exactamente
+
+### El número de factura no es parte del acta
+
+Aparecía en el PDF pero **no había forma de rellenarlo**: no existía en
+ninguna pantalla, y al firmar toda la visita quedaba inmutable.
+
+La raíz fue tratar la visita como un bloque único. Pero lo que el cliente
+firma es el trabajo: checklist, observaciones, fotos y fechas. El número de
+factura lo asigna la oficina después, al facturar, y el cliente no lo ha
+visto nunca. Congelarlo con el resto era un error de categoría.
+
+Ahora una visita firmada admite **solo** ese campo; cualquier otro cambio se
+sigue rechazando. Y al cambiarlo se borra el acta guardada, porque el número
+va impreso en ella y el archivo dejaría de ser correcto.
+
+### Los técnicos nunca se ocultan por isla
+
+El alta de visita filtraba los técnicos por la isla del cliente. En las islas
+menores no hay técnico fijo —se desplaza uno de las capitalinas— así que el
+desplegable salía vacío y bloqueaba una asignación legítima.
+
+Ahora se muestran todos, con los de la isla primero y el resto agrupados bajo
+«Con desplazamiento». Filtrar por conveniencia estaba impidiendo el caso real.

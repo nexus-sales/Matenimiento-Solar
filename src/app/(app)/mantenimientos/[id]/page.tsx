@@ -46,6 +46,7 @@ type Visita = {
   equiposReemplazados: string | null;
   firmanteClienteNombre: string | null;
   firmanteTecnicoNombre: string | null;
+  numeroFactura: string | null;
 };
 
 type Cliente = {
@@ -87,6 +88,8 @@ export default function VisitaPage() {
     { id: string; nombre: string; isla: string | null }[]
   >([]);
   const [asignando, setAsignando] = useState(false);
+  const [factura, setFactura] = useState("");
+  const [guardandoFactura, setGuardandoFactura] = useState(false);
   const [checklist, setChecklist] = useState<Fila[]>([]);
   const [obsBloque, setObsBloque] = useState<Record<string, string>>({});
   const [cargando, setCargando] = useState(true);
@@ -197,6 +200,30 @@ export default function VisitaPage() {
     if (!res.ok) {
       setError(await leerErrorApi(res, "No se pudo guardar la observación."));
     }
+  }
+
+  /**
+   * El número de factura se puede poner DESPUÉS de firmar: lo asigna la
+   * oficina al facturar, y no forma parte de lo que firmó el cliente. Al
+   * cambiarlo, el servidor invalida el acta guardada para que se regenere.
+   */
+  async function guardarFactura() {
+    setGuardandoFactura(true);
+    setError(null);
+
+    const res = await fetch(`/api/mantenimientos/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ numeroFactura: factura.trim() || null }),
+    });
+
+    setGuardandoFactura(false);
+
+    if (!res.ok) {
+      setError(await leerErrorApi(res, "No se pudo guardar el nº de factura."));
+      return;
+    }
+    cargar();
   }
 
   /** Reasignar es trabajo de oficina: el técnico no se asigna a sí mismo. */
@@ -506,6 +533,38 @@ export default function VisitaPage() {
           />
         </section>
       ))}
+
+      {puedeAsignar && (
+        <div className="mb-5 rounded-lg border border-borde bg-superficie p-4">
+          <label
+            htmlFor="factura"
+            className="mb-1 block text-xs font-semibold uppercase tracking-wide text-tenue"
+          >
+            Nº de factura
+          </label>
+          <p className="mb-2 text-xs text-tenue">
+            Se puede rellenar después de firmar. Aparece en el acta.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <input
+              id="factura"
+              value={factura}
+              onChange={(e) => setFactura(e.target.value)}
+              placeholder="F-2026-0142"
+              className="min-w-0 flex-1 rounded border border-borde-fuerte bg-superficie p-2 text-sm focus:border-acento focus:outline-none"
+            />
+            <button
+              onClick={guardarFactura}
+              disabled={
+                guardandoFactura || factura.trim() === (visita.numeroFactura ?? "")
+              }
+              className="rounded border border-borde-fuerte px-3 py-2 text-sm hover:bg-superficie-alt disabled:opacity-40"
+            >
+              {guardandoFactura ? "Guardando…" : "Guardar"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {visita.firmado ? (
         <div className="rounded-lg border border-borde bg-superficie p-5 text-sm">

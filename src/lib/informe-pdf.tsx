@@ -337,9 +337,17 @@ export function InformeMantenimiento({ datos }: { datos: DatosInforme }) {
         <View style={e.seccion}>
           <Text style={e.tituloSeccion}>REGISTRO DE MANTENIMIENTO</Text>
 
+          {/* El bloque SÍ puede partirse entre páginas. Con `wrap={false}`
+              una visita anual reventaría: el bloque de inversores son siete
+              puntos y hasta seis fotos cada uno, mucho más de una página, y un
+              contenedor que no puede partirse se recorta.
+
+              Lo que no se parte es cada punto, que es pequeño y debe quedarse
+              junto a sus fotos. `minPresenceAhead` evita además que el título
+              de un bloque se quede solo al pie de página. */}
           {bloques.map((bloque) => (
-            <View key={bloque.categoria} style={e.bloque} wrap={false}>
-              <Text style={e.tituloBloque}>
+            <View key={bloque.categoria} style={e.bloque}>
+              <Text style={e.tituloBloque} minPresenceAhead={60}>
                 {NOMBRE_CATEGORIA[bloque.categoria]}
               </Text>
 

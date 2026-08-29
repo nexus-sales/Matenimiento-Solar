@@ -1,0 +1,64 @@
+name: Security Scan
+
+# Corre en cada push y en cada Pull Request — nadie tiene que acordarse de invocarlo.
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+
+jobs:
+  secrets:
+    name: Secretos (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # historial completo — un secreto borrado del HEAD sigue comprometido
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  sast:
+    name: Análisis estático (semgrep)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run semgrep
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: auto
+
+  dependencias-node:
+    name: Dependencias (npm audit)
+    runs-on: ubuntu-latest
+    if: hashFiles('package.json') != ''
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm audit --audit-level=high
+
+  dependencias-python:
+    name: Dependencias (pip-audit)
+    runs-on: ubuntu-latest
+    if: hashFiles('requirements.txt', 'pyproject.toml') != ''
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pip-audit --break-system-packages || pip install pip-audit
+      - run: pip-audit -r requirements.txt || pip-audit
+
+  dependencias-otros-stacks:
+    name: Recordatorio — otros stacks
+    runs-on: ubuntu-latest
+    if: hashFiles('composer.json', 'Gemfile', 'go.mod', 'Cargo.toml') != ''
+    steps:
+      - run: |
+          echo "Detectado un stack (PHP/Ruby/Go/Rust) sin job dedicado en este workflow."
+          echo "Añade el paso correspondiente: composer audit / bundle audit / govulncheck / cargo audit."
+          echo "Ver references/herramientas-por-stack.md del skill Auditor para el comando exacto."

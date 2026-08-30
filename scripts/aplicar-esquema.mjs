@@ -32,7 +32,7 @@
  *   SIMULAR=si           solo informa del estado, no modifica nada
  */
 import { readFileSync, readdirSync, existsSync } from "node:fs";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import path from "node:path";
 import pg from "pg";
 import bcrypt from "bcryptjs";
@@ -170,13 +170,54 @@ try {
   );
 
   if (aplicadas.size === 0 && reales.n > 0) {
-    aplicadas = new Set([migraciones[0].nombre]);
-    aviso(`Base preexistente: se da por aplicada ${migraciones[0].nombre}`);
+    // Base con esquema pero sin registro: es una instalación anterior a que
+    // este mecanismo existiera. Antes se daba por aplicada SOLO la primera
+    // migración y las intermedias quedaban como pendientes; al reintentarlas
+    // fallaban, porque su trabajo ya estaba hecho. Es lo que pasó con la
+    // 0004 y hubo que arreglarlo a mano contra la base.
+    //
+    // El script no puede saber hasta dónde llegó ese esquema: hay que
+    // decírselo. Parar y preguntar es peor experiencia que adivinar, y mucho
+    // mejor que adivinar mal contra una base con datos.
+    const hasta = process.env.ASUMIR_APLICADAS_HASTA?.trim();
+
+    if (!hasta) {
+      console.error("");
+      console.error("  Esta base ya tiene esquema pero no tiene registro de");
+      console.error("  migraciones, así que no se sabe cuáles se aplicaron.");
+      console.error("");
+      console.error("  Indica la última que YA está aplicada y vuelve a lanzar:");
+      console.error("");
+      for (const m of migraciones) console.error(`    ${m.nombre}`);
+      console.error("");
+      console.error("    ASUMIR_APLICADAS_HASTA=<nombre> node scripts/aplicar-esquema.mjs");
+      console.error("");
+      console.error("  Si no estás seguro, mira qué tablas y columnas existen");
+      console.error("  antes de decidir. Aplicar de menos deja el esquema a");
+      console.error("  medias; aplicar de más falla, pero sin tocar los datos.");
+      console.error("");
+      process.exit(1);
+    }
+
+    const corte = migraciones.findIndex((m) => m.nombre === hasta);
+    if (corte === -1) {
+      console.error("");
+      console.error(`  ASUMIR_APLICADAS_HASTA="${hasta}" no es ninguna de las`);
+      console.error("  migraciones del repositorio. Cópiala tal cual, con .sql.");
+      console.error("");
+      process.exit(1);
+    }
+
+    const previas = migraciones.slice(0, corte + 1);
+    aplicadas = new Set(previas.map((m) => m.nombre));
+    aviso(`Base preexistente: se dan por aplicadas ${previas.length} migraciones, hasta ${hasta}`);
     if (!SIMULAR) {
-      await cliente.query(
-        "insert into _migraciones (nombre) values ($1) on conflict do nothing",
-        [migraciones[0].nombre]
-      );
+      for (const m of previas) {
+        await cliente.query(
+          "insert into _migraciones (nombre) values ($1) on conflict do nothing",
+          [m.nombre]
+        );
+      }
     }
   }
 
@@ -245,20 +286,58 @@ try {
   }
 
   // --- 3. RLS ---------------------------------------------------------
+  //
+  // Antes esto se saltaba el paso entero si ya existía alguna política. El
+  // efecto era que un cambio en rls.sql NO llegaba nunca a un servidor ya
+  // desplegado, y el script lo informaba como "ya hay 15 políticas" — es
+  // decir, fallaba en silencio diciendo que todo estaba bien.
+  //
+  // Ahora se compara el hash del archivo con el del último aplicado. Si
+  // cambia, se vuelve a ejecutar entero; rls.sql es idempotente (cada
+  // política lleva su DROP ... IF EXISTS delante), así que reaplicarlo es
+  // seguro y deja la base exactamente como describe el archivo.
   paso("Políticas de seguridad");
+  const sqlRls = readFileSync(path.join("src", "db", "rls.sql"), "utf8");
+  const hashRls = createHash("sha256").update(sqlRls).digest("hex").slice(0, 12);
+  const claveRls = `rls.sql@${hashRls}`;
+
   const { rows: [p] } = await cliente.query(
     "select count(*)::int n from pg_policies where schemaname='public'"
   );
-  if (p.n > 0) {
-    aviso(`Ya hay ${p.n} políticas — se omite`);
+  const yaAplicado = aplicadas.has(claveRls);
+
+  if (yaAplicado) {
+    aviso(`Sin cambios en rls.sql (${p.n} políticas activas)`);
   } else if (SIMULAR) {
-    aviso("Se aplicaría src/db/rls.sql");
+    aviso(
+      p.n > 0
+        ? `rls.sql ha cambiado — se reaplicaría sobre las ${p.n} políticas actuales`
+        : "Se aplicaría src/db/rls.sql"
+    );
   } else {
-    await cliente.query(readFileSync(path.join("src", "db", "rls.sql"), "utf8"));
+    // En su propia transacción: si una política nueva está mal escrita, se
+    // deshacen todas y quedan las de antes, en vez de media tabla sin
+    // proteger.
+    await cliente.query("BEGIN");
+    try {
+      await cliente.query(sqlRls);
+      await cliente.query(
+        "insert into _migraciones (nombre) values ($1) on conflict do nothing",
+        [claveRls]
+      );
+      await cliente.query("COMMIT");
+    } catch (err) {
+      await cliente.query("ROLLBACK");
+      console.error("");
+      console.error(`Falló rls.sql: ${err.message}`);
+      console.error("Se ha deshecho. Las políticas anteriores siguen activas.");
+      console.error("");
+      process.exit(1);
+    }
     const { rows: [d] } = await cliente.query(
       "select count(*)::int n from pg_policies where schemaname='public'"
     );
-    ok(`${d.n} políticas aplicadas`);
+    ok(`${d.n} políticas aplicadas (rls.sql ${hashRls})`);
   }
 
   // --- 4. datos iniciales ---------------------------------------------

@@ -21,6 +21,42 @@ const nextConfig: NextConfig = {
    * reiniciar el servidor para que un cambio aquí surta efecto.
    */
   allowedDevOrigins: ["10.8.*.*", "192.168.*.*"],
+
+  /**
+   * Cabeceras de seguridad.
+   *
+   * DELIBERADAMENTE SIN CSP. La aplicación inyecta un script en línea para
+   * evitar el parpadeo al cargar el tema (ver src/lib/tema.ts y el
+   * dangerouslySetInnerHTML de app/layout.tsx). Una CSP sin la excepción
+   * correcta lo bloquearía y el tema volvería a parpadear — sin ningún
+   * error visible. La CSP merece su propio paso, con esa excepción medida.
+   */
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          // La app se usa en el móvil y el cliente firma con el dedo en
+          // ella: esa pantalla no debe poder incrustarse en ningún sitio.
+          { key: "X-Frame-Options", value: "DENY" },
+          // Pesa sobre /api/fotos, que devuelve contenido cuyo tipo lo
+          // declaró quien lo subió.
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          // camera=(self) es NECESARIO: el técnico hace las fotos desde el
+          // navegador. Quitarlo rompe la subida de fotos.
+          {
+            key: "Permissions-Policy",
+            value: "geolocation=(), microphone=(), camera=(self)",
+          },
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=31536000; includeSubDomains",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

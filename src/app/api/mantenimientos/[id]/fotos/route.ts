@@ -20,6 +20,31 @@ import {
 const MAX_FOTOS_POR_PUNTO = 6;
 
 /**
+ * Comprueba la firma del archivo: los primeros bytes que identifican el
+ * formato de verdad, al margen de lo que diga la cabecera del navegador.
+ *
+ * Los tres formatos que acepta la app tienen firma fija:
+ *   JPEG  FF D8
+ *   PNG   89 50 4E 47 0D 0A 1A 0A
+ *   WebP  "RIFF" .... "WEBP"
+ */
+function esImagenDeVerdad(b: Buffer): boolean {
+  if (b.length < 12) return false;
+  if (b[0] === 0xff && b[1] === 0xd8) return true;
+  if (
+    b.subarray(0, 8).equals(
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+    )
+  ) {
+    return true;
+  }
+  return (
+    b.subarray(0, 4).toString("latin1") === "RIFF" &&
+    b.subarray(8, 12).toString("latin1") === "WEBP"
+  );
+}
+
+/**
  * Sube una foto a un punto del checklist.
  *
  * La imagen viaja por la aplicación en lugar de ir directa al almacenamiento
@@ -77,6 +102,17 @@ export async function POST(
   }
 
   const bytes = Buffer.from(await archivo.arrayBuffer());
+
+  // `archivo.type` es la cabecera que envia el cliente, no el contenido: se
+  // puede declarar image/jpeg y subir cualquier cosa. Aqui se miran los
+  // primeros bytes, que si son el archivo de verdad.
+  if (!esImagenDeVerdad(bytes)) {
+    return NextResponse.json(
+      { error: "El archivo no es una imagen JPEG, PNG o WebP válida." },
+      { status: 400 }
+    );
+  }
+
   const clave = claveFoto(intervencionId, itemId, extensionDe(archivo.type));
 
   // Primero la base, luego el archivo. Si el almacenamiento falla, se

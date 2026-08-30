@@ -3,10 +3,13 @@
 Aplicación interna para gestionar la cartera de clientes fotovoltaicos de SR
 Energía y las visitas de mantenimiento que sus técnicos hacen en campo.
 
-**Estado:** los módulos de **Clientes**, **Mantenimiento** y **Usuarios** están
-construidos, probados contra PostgreSQL real y **desplegados en producción**
-(Hetzner + Dokploy). Quedan dos piezas conocidas: la **subida de fotos** (falta
-el almacenamiento S3-compatible) y la **generación del PDF del informe**.
+**Estado: en pruebas, todavía no en producción.** Los módulos de **Clientes**,
+**Usuarios** y los **tres formularios** —mantenimiento, visita previa y acta de
+finalización de obra— están construidos y desplegados en un servidor propio
+(Hetzner + Dokploy), con subida de fotos a MinIO y generación del PDF firmado.
+Los datos que hay son de prueba: **no hay clientes ni usuarios reales**.
+
+Lo que falta antes de salir de pruebas está en [Qué falta](#qué-falta).
 
 El registro de decisiones, con el motivo de cada una, está en
 [`docs/decisiones.md`](docs/decisiones.md).
@@ -168,7 +171,7 @@ src/
   db/
     schema.ts                 definición de las 7 tablas
     rls.sql                   políticas de Row Level Security
-    seed.ts                   24 puntos de checklist + primer admin
+    seed.ts                   los tres catálogos + primer admin
     migrations/
     index.ts                  pools y conSesionRLS
   lib/
@@ -216,8 +219,8 @@ valor inventado.
 | `rol_usuario` | admin · oficina · tecnico |
 | `tipo_visita` | semestral · anual |
 | `estado_punto` | sin_revisar · correcto · incidencia · no_aplica |
-| `categoria_checklist` | paneles · estructura · inversor · cuadros_protecciones · baterias |
 | `plantilla` | mantenimiento · visita_previa · acta_obra |
+| `tipo_campo` | estado · foto · texto · numero · medida · si_no · lista |
 
 ### `clientes` — 21 columnas
 
@@ -234,9 +237,9 @@ incluidos los de su instalación fotovoltaica. Los demás módulos leen de aquí
 
 `provincia` se calcula desde `isla`; no se teclea.
 
-### `mantenimientos` — 21 columnas
+### `intervenciones` — 27 columnas
 
-Una visita.
+Una visita, del formulario que sea. La columna `plantilla` dice cuál.
 
 | Grupo | Columnas |
 |---|---|
@@ -249,25 +252,44 @@ Una visita.
 Las firmas son PNG en base64 (~20 KB). Van en la base porque son pequeñas, están
 atadas al registro que validan y no dependen del almacenamiento de objetos.
 
-### `checklist_item_definicion` — 7 columnas
+### `plantilla_campo` — 12 columnas
 
-Catálogo de puntos, editable por el admin. `plantilla`, `categoria`, `nombre`,
-`periodicidad_meses`, `orden`, `activo`.
+Catálogo de campos de los tres formularios. Además de `plantilla`,
+`categoria`, `nombre`, `orden` y `activo`, cada campo lleva su `tipo` —estado,
+foto, texto, numero, medida, si_no o lista—, si es `obligatorio`, y `unidad`,
+`opciones` y `ayuda` cuando aplican. `periodicidad_meses` solo la usa el
+mantenimiento, y por eso admite nulo.
 
-Sembrado con los 24 puntos del contrato: **5 de periodicidad semestral y 19
-anuales**, repartidos en paneles (5), estructura (5), inversor (7), cuadros y
-protecciones (5) y baterías (2).
+`categoria` es texto libre, no un enum: cada plantilla trae sus propios bloques
+y el administrador podrá crear más sin migrar la base. La lista de bloques
+conocidos vive en `src/lib/plantillas.ts`.
 
-### `mantenimiento_checklist_respuesta` — 5 columnas
+Sembrado con **131 campos**:
 
-La respuesta a un punto en una visita concreta: `estado` y `observacion`.
-Índice único `unico_item_por_visita` sobre (`mantenimiento_id`, `item_id`) — una
-respuesta por punto y visita, sin duplicados posibles.
+| Plantilla | Campos | De ellos fotos | Obligatorios | Bloques |
+|---|---|---|---|---|
+| `mantenimiento` | 24 | 0 | los 24 | 5 |
+| `visita_previa` | 51 | 24 | 24 | 10 |
+| `acta_obra` | 56 | 48 | 25 | 8 |
 
-### `mantenimiento_observacion_bloque` — 4 columnas
+Los 24 del mantenimiento son los del contrato: 5 de periodicidad semestral y 19
+anuales, repartidos en paneles (5), estructura (5), inversor (7), cuadros y
+protecciones (5) y baterías (2). Los otros dos catálogos están transcritos de
+los formularios de referencia que usa SR Energía.
 
-Nota sobre un bloque entero. Índice único `unico_bloque_por_visita` sobre
-(`mantenimiento_id`, `categoria`).
+### `respuestas` — 6 columnas
+
+La respuesta a un campo en una intervención concreta: `estado` para el
+checklist, `valor` para lo demás y `observacion` siempre. `valor` se guarda
+como texto a propósito: una medida es «6.40 x 3.90» y una sección «25mm²», y
+un tipo numérico perdería el dato.
+Índice único `unico_campo_por_intervencion` sobre (`intervencion_id`,
+`campo_id`) — una respuesta por campo e intervención, sin duplicados posibles.
+
+### `observaciones_bloque` — 4 columnas
+
+Nota sobre un bloque entero. Índice único `unico_bloque_por_intervencion`
+sobre (`intervencion_id`, `categoria`).
 
 ### `respuesta_foto` — 6 columnas
 
@@ -318,10 +340,10 @@ antes de interpolarlos (`SET LOCAL` no admite parámetros preparados).
 | `usuarios` | `usuarios_select`, `usuarios_admin_write` | Todos leen; solo admin escribe |
 | `clientes` | `clientes_oficina_admin_all`, `clientes_tecnico_read` | Oficina y admin todo; técnico solo lee |
 | `mantenimientos` | `mantenimientos_oficina_admin_all`, `mantenimientos_tecnico_propio` | El técnico solo ve y edita **las suyas** |
-| `mantenimiento_checklist_respuesta` | `respuesta_oficina_admin_all`, `respuesta_tecnico_propio` | Sigue a su visita padre |
-| `mantenimiento_observacion_bloque` | `observacion_bloque_oficina_admin_all`, `observacion_bloque_tecnico_propio` | Sigue a su visita padre |
+| `respuestas` | `respuesta_oficina_admin_all`, `respuesta_tecnico_propio` | Sigue a su visita padre |
+| `observaciones_bloque` | `observacion_bloque_oficina_admin_all`, `observacion_bloque_tecnico_propio` | Sigue a su visita padre |
 | `respuesta_foto` | `foto_oficina_admin_all`, `foto_tecnico_propio` | Sigue a la visita de su respuesta |
-| `checklist_item_definicion` | `checklist_item_select`, `checklist_item_admin_write`, `checklist_item_admin_update` | Todos leen el catálogo; solo admin lo edita |
+| `plantilla_campo` | `checklist_item_select`, `checklist_item_admin_write`, `checklist_item_admin_update` | Todos leen el catálogo; solo admin lo edita |
 
 **Comprobado en vivo:** la misma consulta sobre el catálogo devuelve 0 filas sin
 contexto de sesión y 24 con él.
@@ -612,20 +634,31 @@ temas.
 
 ## Qué falta
 
-4. **Módulo de obras nuevas** — informe de visita previa y acta de finalización.
-   Van los últimos a propósito: las fotos y el PDF son la maquinaria que más
-   necesitan, así que se construye una vez y sirve para los tres.
-   El catálogo ya tiene `plantilla` preparado, pero necesitarán además una
-   columna de **tipo de campo**: esos formularios piden medidas, metros y
-   desplegables, no solo estados. Ver `docs/decisiones.md`.
-3. **Envío automático del acta.** Hoy el administrador la descarga y la manda
+1. **Editor de plantillas.** Los tres catálogos son fijos: se siembran y solo
+   se tocan por SQL. El administrador tiene que poder desactivar campos que no
+   apliquen —los doce huecos de número de serie sobran en una instalación de
+   seis paneles—, renombrarlos y añadir los suyos. Es lo que convierte esto de
+   un encargo en un producto vendible a otro instalador.
+2. **Mostrar el rastro de una anulación.** Al anular se guarda quién lo hizo
+   (`anulada_por`) y con qué acta se sustituyó (`sustituida_por`), pero no hay
+   pantalla que lo enseñe. El rastro existe en la base y nadie puede verlo, que
+   es justo lo que hacía útil la función.
+3. **Terminar o quitar el seguimiento de contacto.** `fecha_contacto` y
+   `via_whatsapp` se aceptan en la API y no los envía ni los muestra ninguna
+   pantalla; solo `contactado` está cableado de punta a punta.
+4. **Envío automático del acta.** Hoy el administrador la descarga y la manda
    él junto con la factura, que es como quiere trabajar SR Energía. Si algún día
    se quiere automatizar, hará falta un servidor de correo.
-4. **Llevar la aplicación fuera de Canarias.** La isla es un tipo enumerado y
+5. **Llevar la aplicación fuera de Canarias.** La isla es un tipo enumerado y
    la provincia se deriva de ella, así que un cliente peninsular exigiría
    generalizar a «zona operativa». Es deuda consciente: el plan de migración
    está escrito en [`docs/decisiones.md`](docs/decisiones.md), y esperar no
    encarece el trabajo.
-5. **Reabrir una visita firmada.** Hoy no se puede, a propósito. Si alguien firma
-   por error, la única salida es borrar la visita. Falta decidir si se quiere una
-   vía y con qué control.
+6. **Una política de contenido (CSP).** Las demás cabeceras de seguridad están
+   puestas; la CSP se dejó fuera a propósito porque el script que evita el
+   parpadeo del tema es en línea y una CSP mal medida lo bloquearía sin dar
+   ningún error.
+7. **Rama de instalación aislada en la visita previa.** El formulario de
+   referencia del que se transcribió estaba relleno con una instalación
+   conectada a red, así que si existe un juego de campos distinto para las
+   aisladas, falta.

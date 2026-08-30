@@ -9,6 +9,8 @@ type Modulo = {
   href: string;
   etiqueta: string;
   soloAdmin?: boolean;
+  /** Admin y oficina, no el técnico. */
+  soloOficina?: boolean;
   icono: React.ReactNode;
 };
 
@@ -47,6 +49,10 @@ const MODULOS: Modulo[] = [
   {
     href: "/clientes",
     etiqueta: "Clientes",
+    // El técnico ya no lista la cartera (ver /api/clientes): los datos del
+    // cliente le llegan dentro de su visita. Sin esto el enlace seguiría en
+    // el menú y respondería 403 al pulsarlo.
+    soloOficina: true,
     icono: (
       <Icono>
         <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
@@ -139,7 +145,11 @@ export default function SidebarCliente({
     return ruta === href || ruta.startsWith(`${href}/`);
   }
 
-  const visibles = MODULOS.filter((m) => !m.soloAdmin || rol === "admin");
+  const visibles = MODULOS.filter(
+    (m) =>
+      (!m.soloAdmin || rol === "admin") &&
+      (!m.soloOficina || rol === "admin" || rol === "oficina")
+  );
   const ancho = plegado ? "lg:w-16" : "lg:w-60";
 
   return (

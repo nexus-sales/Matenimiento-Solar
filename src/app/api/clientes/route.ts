@@ -18,6 +18,22 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "No autenticado." }, { status: 401 });
   }
 
+  // Listar la cartera entera es trabajo de oficina. Un tecnico solo necesita
+  // los datos del cliente de la visita que tiene asignada, y esos le llegan
+  // dentro de la propia visita.
+  //
+  // Esta guarda NO cierra el acceso por si sola: la ficha individual se sirve
+  // por /api/clientes/[id], que no pasa por aqui. Lo que cierra el acceso de
+  // verdad es la politica clientes_tecnico_asignados de src/db/rls.sql, que
+  // esta escrita y pendiente de aplicar. Son dos agujeros, no dos capas del
+  // mismo.
+  if (!tieneRol(sesion, ["admin", "oficina"])) {
+    return NextResponse.json(
+      { error: "No tienes permiso para listar clientes." },
+      { status: 403 }
+    );
+  }
+
   const params = req.nextUrl.searchParams;
   const q = params.get("q")?.trim();
   const islaFiltro = params.get("isla")?.trim();

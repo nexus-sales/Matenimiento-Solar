@@ -75,6 +75,38 @@ CREATE POLICY clientes_oficina_admin_all ON clientes
   USING (current_setting('app.current_user_rol', true) IN ('admin', 'oficina'))
   WITH CHECK (current_setting('app.current_user_rol', true) IN ('admin', 'oficina'));
 
+-- ---------------------------------------------------------------------
+-- PENDIENTE DE DECISIÓN — NO aplicada todavía.
+--
+-- La política vigente (`clientes_tecnico_read`, justo debajo) deja que
+-- CUALQUIER técnico lea la ficha de TODOS los clientes: nombre, DNI,
+-- dirección, teléfono, email y CUPS de la cartera entera. La guarda de rol
+-- de /api/clientes impide listarlos de golpe, pero no cierra el acceso a la
+-- ficha individual por /api/clientes/[id]: eso solo lo cierra esta política.
+--
+-- La sustituta restringe al técnico a los clientes de las visitas que tiene
+-- asignadas. Antes de activarla hay que responder una pregunta de negocio:
+--
+--   ¿Necesita un técnico consultar la ficha de un cliente ANTES de que se
+--   le asigne la visita? Si la respuesta es sí, esta política se lo impide.
+--
+-- Para activarla: borrar el bloque `clientes_tecnico_read` de abajo y
+-- descomentar el de arriba. El siguiente despliegue la aplica solo, porque
+-- el hash de este archivo habrá cambiado.
+--
+-- DROP POLICY IF EXISTS clientes_tecnico_read ON clientes;
+-- DROP POLICY IF EXISTS clientes_tecnico_asignados ON clientes;
+-- CREATE POLICY clientes_tecnico_asignados ON clientes
+--   FOR SELECT
+--   USING (
+--     current_setting('app.current_user_rol', true) = 'tecnico'
+--     AND EXISTS (
+--       SELECT 1 FROM intervenciones m
+--       WHERE m.cliente_id = clientes.id
+--         AND m.tecnico_id::text = current_setting('app.current_user_id', true)
+--     )
+--   );
+-- ---------------------------------------------------------------------
 DROP POLICY IF EXISTS clientes_tecnico_read ON clientes;
 CREATE POLICY clientes_tecnico_read ON clientes
   FOR SELECT

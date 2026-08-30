@@ -111,3 +111,33 @@ export function campoPendiente(
   if (campo.tipo === "foto") return numFotos === 0;
   return !respuesta?.valor?.trim();
 }
+
+/**
+ * Cómo se titula el documento PDF de cada plantilla.
+ *
+ * Estaba fijo en el generador: las tres plantillas salían tituladas «Acta de
+ * mantenimiento», también un acta de finalización de obra. Es el papel que
+ * firma el cliente, así que tiene que decir qué se firmó.
+ *
+ * `encabezado` es el título de la sección que lista los campos respondidos.
+ */
+export const TEXTOS_DOCUMENTO: Record<
+  Plantilla,
+  { titulo: string; subtitulo: string; encabezado: string }
+> = {
+  mantenimiento: {
+    titulo: "Acta de mantenimiento",
+    subtitulo: "Acta de mantenimiento de instalación fotovoltaica",
+    encabezado: "REGISTRO DE MANTENIMIENTO",
+  },
+  visita_previa: {
+    titulo: "Informe de visita previa",
+    subtitulo: "Informe de visita técnica previa a la instalación",
+    encabezado: "DATOS RECOGIDOS EN LA VISITA",
+  },
+  acta_obra: {
+    titulo: "Acta de finalización de obra",
+    subtitulo: "Acta de finalización de obra de instalación fotovoltaica",
+    encabezado: "REGISTRO DE LA OBRA EJECUTADA",
+  },
+};

@@ -12,7 +12,11 @@ import {
 import { type EstadoPunto } from "@/lib/checklist";
 
 /**
- * Acta de mantenimiento en PDF.
+ * El documento firmado en PDF, para las tres plantillas.
+ *
+ * Los textos de portada (titulo, subtitulo, encabezado y pie) llegan en
+ * `datos.documento`: estaban fijos en "mantenimiento" y un acta de obra
+ * salia titulada como un mantenimiento.
  *
  * Sigue la estructura de los informes que aportó el cliente: datos, el
  * recorrido punto por punto con sus fotos, y las dos firmas al final.
@@ -169,6 +173,14 @@ const COLOR_ESTADO: Record<EstadoPunto, string> = {
 };
 
 export type DatosInforme = {
+  /**
+   * Cómo se titula este documento. Lo resuelve quien arma los datos a partir
+   * de la plantilla de la intervención: aquí no se conoce, y estaba fijo en
+   * "mantenimiento" para las tres.
+   */
+  documento: { titulo: string; subtitulo: string; encabezado: string };
+  /** Qué se hizo, para la línea de referencia: "Visita semestral", "Acta de obra". */
+  referencia: string;
   visita: {
     id: string;
     tipo: "semestral" | "anual";
@@ -254,7 +266,7 @@ function Dato({
 }
 
 export function InformeMantenimiento({ datos }: { datos: DatosInforme }) {
-  const { visita, cliente, tecnico, bloques } = datos;
+  const { visita, cliente, tecnico, bloques, documento, referencia } = datos;
 
   const direccion = [
     cliente.direccion,
@@ -270,14 +282,16 @@ export function InformeMantenimiento({ datos }: { datos: DatosInforme }) {
 
   return (
     <Document
-      title={`Acta de mantenimiento — ${cliente.nombre}`}
+      title={`${documento.titulo} — ${cliente.nombre}`}
       author="SR Energía"
-      subject={`Visita ${visita.tipo} de ${fecha(visita.fechaEjecucion)}`}
+      subject={`${referencia} de ${fecha(visita.fechaEjecucion)}`}
     >
       <Page size="A4" style={e.pagina}>
         {visita.anulada && (
           <View style={e.bandaAnulada} fixed>
-            <Text style={e.bandaTitulo}>ACTA ANULADA — SIN VALIDEZ</Text>
+            <Text style={e.bandaTitulo}>
+              {documento.titulo.toUpperCase()} ANULADA — SIN VALIDEZ
+            </Text>
             <Text style={e.bandaTexto}>
               Anulada el {fecha(visita.anuladaEn)}
               {visita.motivoAnulacion ? `. ${visita.motivoAnulacion}` : "."}
@@ -288,13 +302,11 @@ export function InformeMantenimiento({ datos }: { datos: DatosInforme }) {
         <View style={e.cabecera} fixed>
           <View>
             <Text style={e.marca}>SR Energía</Text>
-            <Text style={e.subtitulo}>
-              Acta de mantenimiento de instalación fotovoltaica
-            </Text>
+            <Text style={e.subtitulo}>{documento.subtitulo}</Text>
           </View>
           <View>
             <Text style={e.referencia}>
-              Visita {visita.tipo} · {fecha(visita.fechaEjecucion)}
+              {referencia} · {fecha(visita.fechaEjecucion)}
             </Text>
             <Text style={e.referencia}>Ref. {visita.id.slice(0, 8)}</Text>
           </View>
@@ -374,7 +386,7 @@ export function InformeMantenimiento({ datos }: { datos: DatosInforme }) {
         )}
 
         <View style={e.seccion}>
-          <Text style={e.tituloSeccion}>REGISTRO DE MANTENIMIENTO</Text>
+          <Text style={e.tituloSeccion}>{documento.encabezado}</Text>
 
           {/* El bloque SÍ puede partirse entre páginas. Con `wrap={false}`
               una visita anual reventaría: el bloque de inversores son siete
@@ -494,7 +506,7 @@ export function InformeMantenimiento({ datos }: { datos: DatosInforme }) {
 
         <View style={e.pie} fixed>
           <Text>
-            SR Energía · Acta de mantenimiento · {cliente.nombre}
+            SR Energía · {documento.titulo} · {cliente.nombre}
           </Text>
           <Text
             render={({ pageNumber, totalPages }) =>

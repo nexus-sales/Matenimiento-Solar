@@ -13,7 +13,11 @@ import {
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { obtenerSesion } from "@/lib/auth";
 import { itemAplicaAVisita } from "@/lib/checklist";
-import { bloquesDe } from "@/lib/plantillas";
+import {
+  bloquesDe,
+  NOMBRE_PLANTILLA,
+  TEXTOS_DOCUMENTO,
+} from "@/lib/plantillas";
 import { InformeMantenimiento, type DatosInforme } from "@/lib/informe-pdf";
 import {
   ALMACENAMIENTO_CONFIGURADO,
@@ -126,7 +130,10 @@ export async function GET(
     );
   }
 
-  const nombreArchivo = `acta-${cliente.nombre.replace(/[^\w]+/g, "-").toLowerCase()}-${(visita.fechaEjecucion ?? "").slice(0, 10)}.pdf`;
+  // El prefijo sigue a la plantilla: un informe de visita previa no es un
+  // acta, y el nombre del archivo es lo primero que ve quien lo recibe.
+  const prefijo = visita.plantilla === "visita_previa" ? "informe" : "acta";
+  const nombreArchivo = `${prefijo}-${cliente.nombre.replace(/[^\w]+/g, "-").toLowerCase()}-${(visita.fechaEjecucion ?? "").slice(0, 10)}.pdf`;
 
   // ¿Ya está generada?
   if (ALMACENAMIENTO_CONFIGURADO) {
@@ -222,6 +229,13 @@ export async function GET(
   }
 
   const datos: DatosInforme = {
+    documento: TEXTOS_DOCUMENTO[visita.plantilla],
+    // Semestral y anual solo significan algo en el mantenimiento; en una
+    // obra la referencia es el propio tipo de documento.
+    referencia:
+      visita.plantilla === "mantenimiento"
+        ? `Visita ${visita.tipo}`
+        : NOMBRE_PLANTILLA[visita.plantilla],
     visita: {
       id: visita.id,
       tipo: visita.tipo,

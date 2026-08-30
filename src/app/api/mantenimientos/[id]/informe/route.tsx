@@ -12,7 +12,8 @@ import {
 } from "@/db/schema";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { obtenerSesion } from "@/lib/auth";
-import { CATEGORIAS, itemAplicaAVisita, type Categoria } from "@/lib/checklist";
+import { itemAplicaAVisita } from "@/lib/checklist";
+import { bloquesDe } from "@/lib/plantillas";
 import { InformeMantenimiento, type DatosInforme } from "@/lib/informe-pdf";
 import {
   ALMACENAMIENTO_CONFIGURADO,
@@ -172,8 +173,14 @@ export async function GET(
 
   const bloques: DatosInforme["bloques"] = [];
 
-  for (const categoria of CATEGORIAS) {
-    const delBloque = aplicables.filter((i) => i.categoria === categoria);
+  // Los bloques de SU plantilla. Antes se recorrian los cinco del checklist
+  // de mantenimiento: en un acta de obra no coincide ninguno y el PDF habria
+  // salido sin un solo campo.
+  for (const bloque of bloquesDe(
+    visita.plantilla,
+    aplicables.map((i) => i.categoria)
+  )) {
+    const delBloque = aplicables.filter((i) => i.categoria === bloque.clave);
     if (!delBloque.length) continue;
 
     const puntos: DatosInforme["bloques"][number]["puntos"] = [];
@@ -197,15 +204,19 @@ export async function GET(
       puntos.push({
         nombre: item.nombre,
         periodicidadMeses: item.periodicidadMeses,
-        estado: respuesta?.estado ?? "sin_revisar",
+        // Solo el checklist se cierra con una marca de estado; los demas
+        // campos, con lo anotado o con la propia foto.
+        estado: item.tipo === "estado" ? (respuesta?.estado ?? "sin_revisar") : null,
+        valor: respuesta?.valor ?? null,
         observacion: respuesta?.observacion ?? null,
         fotos: incrustadas,
       });
     }
 
     bloques.push({
-      categoria: categoria as Categoria,
-      observacion: obsPorCategoria.get(categoria) ?? null,
+      clave: bloque.clave,
+      titulo: bloque.nombre,
+      observacion: obsPorCategoria.get(bloque.clave) ?? null,
       puntos,
     });
   }

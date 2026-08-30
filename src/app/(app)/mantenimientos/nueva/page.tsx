@@ -6,6 +6,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { leerErrorApi } from "@/lib/errores-api";
 import { NOMBRE_TIPO_VISITA, TIPOS_VISITA, type TipoVisita } from "@/lib/checklist";
+import {
+  NOMBRE_PLANTILLA,
+  PLANTILLAS,
+  type Plantilla,
+} from "@/lib/plantillas";
 
 type Cliente = {
   id: string;
@@ -44,18 +49,25 @@ function FormularioNuevaVisita() {
 
   const [form, setForm] = useState({
     clienteId: params.get("cliente") ?? "",
+    plantilla: "mantenimiento" as Plantilla,
     tipo: "anual" as TipoVisita,
     fechaPrevista: hoyISO(),
     tecnicoId: "",
   });
 
+  const soloConMantenimiento = form.plantilla === "mantenimiento";
+
   useEffect(() => {
-    // Solo se listan clientes con mantenimiento contratado: son los únicos
-    // a los que tiene sentido programarles una visita, y la API lo rechaza
-    // igualmente si se intenta con otro.
+    // Para un mantenimiento solo se listan los clientes que lo tienen
+    // contratado: son los únicos a los que tiene sentido programárselo, y la
+    // API lo rechaza igualmente si se intenta con otro.
+    //
+    // Para una obra es al revés. El cliente de una instalación nueva todavía
+    // no tiene instalación, y mucho menos mantenimiento contratado: filtrarlo
+    // dejaría el desplegable vacío justo cuando más falta hace.
     async function cargar() {
       const [resClientes, resTecnicos] = await Promise.all([
-        fetch("/api/clientes?mantenimiento=si"),
+        fetch(soloConMantenimiento ? "/api/clientes?mantenimiento=si" : "/api/clientes"),
         fetch("/api/usuarios"),
       ]);
 
@@ -71,7 +83,7 @@ function FormularioNuevaVisita() {
       setCargando(false);
     }
     cargar();
-  }, []);
+  }, [soloConMantenimiento]);
 
   const cliente = clientes.find((c) => c.id === form.clienteId);
 
@@ -96,6 +108,7 @@ function FormularioNuevaVisita() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         clienteId: form.clienteId,
+        plantilla: form.plantilla,
         tipo: form.tipo,
         fechaPrevista: form.fechaPrevista,
         tecnicoId: form.tecnicoId || null,
@@ -131,6 +144,33 @@ function FormularioNuevaVisita() {
           className="space-y-4 rounded-lg border border-borde bg-superficie p-5"
         >
           <div>
+            <label className="mb-1 block text-xs text-suave">
+              Tipo de formulario
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {PLANTILLAS.map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  // Cambiar de plantilla cambia la lista de clientes, así que
+                  // se limpia la selección: dejarla puesta permitiría enviar
+                  // un cliente que ya no está en el desplegable.
+                  onClick={() =>
+                    setForm({ ...form, plantilla: p, clienteId: "", tecnicoId: "" })
+                  }
+                  className={`rounded-full border px-3 py-1 text-xs ${
+                    form.plantilla === p
+                      ? "border-acento bg-acento-suave text-acento-contraste"
+                      : "border-borde text-suave hover:border-borde-fuerte"
+                  }`}
+                >
+                  {NOMBRE_PLANTILLA[p]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
             <label className="mb-1 block text-xs text-suave">Cliente *</label>
             <select
               required
@@ -150,14 +190,18 @@ function FormularioNuevaVisita() {
             </select>
             {clientes.length === 0 && (
               <p className="mt-1 text-xs text-tenue">
-                No hay clientes con mantenimiento contratado. Actívalo en la
-                ficha del cliente.
+                {soloConMantenimiento
+                  ? "No hay clientes con mantenimiento contratado. Actívalo en la ficha del cliente."
+                  : "No hay clientes dados de alta. Créalo antes de programar la obra."}
               </p>
             )}
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div>
+            {/* Semestral y anual solo filtran el checklist de mantenimiento.
+                En una visita previa o un acta no hay periodicidad, y ofrecer
+                la elección sugeriría que cambia algo. */}
+            <div className={soloConMantenimiento ? "" : "hidden"}>
               <label className="mb-1 block text-xs text-suave">
                 Tipo de visita
               </label>

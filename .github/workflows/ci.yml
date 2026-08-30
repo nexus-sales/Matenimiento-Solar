@@ -1,0 +1,93 @@
+# Catches on a pull request what has, three times now, only been caught by a
+# failed production deploy.
+#
+# The specific failure this exists for: `npm ci` prunes optional dependencies
+# that do not apply to the platform it runs on, so a lockfile written on Windows
+# can be perfectly valid there and missing packages Linux needs. It then fails at
+# deploy time with "Missing: @emnapi/runtime from lock file" — see commits
+# 7af5b57, 26c5b89 and cbdc928, all the same four packages.
+#
+# The only reliable check is to run the exact install command, on the exact
+# platform and Node version production uses. Everything else here is a bonus.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # GitHub occasionally accepts a push without queueing a run for it (it did so
+  # for 6f457ac: the commit landed on main, Actions was enabled, and no run was
+  # ever created). Without a manual trigger there is no way to ask for one after
+  # the fact — only an empty commit to fake another push.
+  workflow_dispatch:
+
+# A newer push makes an in-flight run pointless; let it go rather than queue.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Install, typecheck, lint, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          # Must match NIXPACKS_NODE_VERSION in nixpacks.toml. A different major
+          # here would let a lockfile through that production then rejects,
+          # which is exactly the class of bug this workflow exists to stop.
+          node-version: '22'
+
+      # Deliberately NOT `npm install`, and deliberately no cache restore before
+      # it: the point is to prove the committed lockfile alone can install
+      # cleanly on Linux, the same way Nixpacks does it.
+      - name: npm ci (same command Nixpacks runs)
+        run: npm ci --no-audit --no-fund
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npx eslint .
+
+      # No secrets are needed: every provider key is read at request time, and
+      # the Anthropic client does not throw when constructed without one
+      # (verified). A build that suddenly needs a secret is itself worth knowing
+      # about, because production reads them at runtime too.
+      - name: Build
+        run: npx next build
+
+  e2e:
+    name: End-to-end
+    runs-on: ubuntu-latest
+    # Separate from `build` on purpose. Browser tests are the flakiest thing
+    # here, and a flaky failure must not be confusable with the lockfile signal
+    # above, which is never flaky.
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - run: npm ci --no-audit --no-fund
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      # The specs mock every /api/ call in the browser, so this needs no provider
+      # keys and makes no upstream requests.
+      - name: Run tests
+        run: npx playwright test --project=chromium
+
+      - name: Upload failure traces
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

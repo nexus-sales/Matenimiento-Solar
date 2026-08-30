@@ -6,6 +6,7 @@ import { and, asc, eq, isNotNull, isNull, lt } from "drizzle-orm";
 import { obtenerSesion } from "@/lib/auth";
 import { exigirRolEscritura } from "@/lib/permisos";
 import { esquemaTipoVisita } from "@/lib/checklist";
+import { PLANTILLAS } from "@/lib/plantillas";
 
 /**
  * Listado general de visitas de mantenimiento. RLS se encarga de que un
@@ -47,6 +48,7 @@ export async function GET(req: NextRequest) {
         firmado: intervenciones.firmado,
         anulada: intervenciones.anulada,
         tipo: intervenciones.tipo,
+        plantilla: intervenciones.plantilla,
         cups: clientes.cups,
         isla: clientes.isla,
         direccion: clientes.direccion,
@@ -68,6 +70,9 @@ export async function GET(req: NextRequest) {
 
 const esquemaNuevaVisita = z.object({
   clienteId: z.string().uuid(),
+  // Sin plantilla es una visita de mantenimiento: es lo que habia antes de
+  // que existieran las otras dos, y lo que sigue creando quien no la manda.
+  plantilla: z.enum(PLANTILLAS).default("mantenimiento"),
   tipo: esquemaTipoVisita,
   fechaPrevista: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida."),
   tecnicoId: z.string().uuid().nullable().optional(),
@@ -98,8 +103,8 @@ export async function POST(req: NextRequest) {
   const datos = parseo.data;
 
   const resultado = await conSesionRLS(sesion, async (tx) => {
-    // Programar una visita a un cliente sin mantenimiento contratado casi
-    // siempre es un error de selección, no una excepción legítima.
+    // Programar un MANTENIMIENTO a un cliente que no lo tiene contratado
+    // casi siempre es un error de selección, no una excepción legítima.
     const [cliente] = await tx
       .select({
         id: clientes.id,
@@ -110,7 +115,11 @@ export async function POST(req: NextRequest) {
       .limit(1);
 
     if (!cliente) return { error: "El cliente no existe.", estado: 400 };
-    if (!cliente.tieneMantenimiento) {
+
+    // El contrato de mantenimiento solo se exige para una visita de
+    // mantenimiento. Una obra nueva es justo el caso contrario: el cliente
+    // todavia no tiene instalacion, y menos aun mantenimiento contratado.
+    if (datos.plantilla === "mantenimiento" && !cliente.tieneMantenimiento) {
       return {
         error:
           "Ese cliente no tiene mantenimiento contratado. Actívalo en su ficha antes de programar la visita.",
@@ -137,7 +146,11 @@ export async function POST(req: NextRequest) {
       .insert(intervenciones)
       .values({
         clienteId: datos.clienteId,
-        tipo: datos.tipo,
+        plantilla: datos.plantilla,
+        // El tipo semestral/anual solo filtra el checklist de
+        // mantenimiento. En las otras dos plantillas no hay periodicidad
+        // que filtrar, asi que se guarda "anual" y no se muestra.
+        tipo: datos.plantilla === "mantenimiento" ? datos.tipo : "anual",
         fechaPrevista: datos.fechaPrevista,
         tecnicoId: datos.tecnicoId ?? null,
       })

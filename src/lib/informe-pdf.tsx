@@ -9,11 +9,7 @@ import {
   Image,
   StyleSheet,
 } from "@react-pdf/renderer";
-import {
-  NOMBRE_CATEGORIA,
-  type Categoria,
-  type EstadoPunto,
-} from "@/lib/checklist";
+import { type EstadoPunto } from "@/lib/checklist";
 
 /**
  * Acta de mantenimiento en PDF.
@@ -91,6 +87,15 @@ const e = StyleSheet.create({
   puntoCabecera: { flexDirection: "row", justifyContent: "space-between" },
   puntoNombre: { flex: 1, paddingRight: 8 },
   estado: { fontSize: 8, fontFamily: "Helvetica-Bold" },
+
+  // El valor anotado va alineado a la derecha, donde en el checklist va la
+  // marca de estado: es la respuesta del campo y ocupa su mismo sitio.
+  valorCampo: {
+    fontSize: 8,
+    fontFamily: "Helvetica-Bold",
+    maxWidth: 160,
+    textAlign: "right",
+  },
 
   observacion: {
     fontSize: 8,
@@ -203,13 +208,20 @@ export type DatosInforme = {
   };
   tecnico: string | null;
   bloques: {
-    categoria: Categoria;
+    /** Clave del bloque, solo para identificarlo. */
+    clave: string;
+    /** Cómo se titula en el informe. Lo resuelve quien arma los datos,
+        porque depende de la plantilla y aquí no se conoce. */
+    titulo: string;
     observacion: string | null;
     puntos: {
       nombre: string;
       /** Solo el checklist de mantenimiento la tiene. */
       periodicidadMeses: number | null;
-      estado: EstadoPunto;
+      /** Solo los campos de tipo `estado` lo usan. */
+      estado: EstadoPunto | null;
+      /** Lo escrito en un campo de texto, medida, número, sí/no o lista. */
+      valor: string | null;
       observacion: string | null;
       /** Imágenes ya descargadas, como data URI: react-pdf no va a la red. */
       fotos: string[];
@@ -373,9 +385,9 @@ export function InformeMantenimiento({ datos }: { datos: DatosInforme }) {
               junto a sus fotos. `minPresenceAhead` evita además que el título
               de un bloque se quede solo al pie de página. */}
           {bloques.map((bloque) => (
-            <View key={bloque.categoria} style={e.bloque}>
+            <View key={bloque.clave} style={e.bloque}>
               <Text style={e.tituloBloque} minPresenceAhead={60}>
-                {NOMBRE_CATEGORIA[bloque.categoria]}
+                {bloque.titulo}
               </Text>
 
               {bloque.puntos.map((punto, i) => (
@@ -390,14 +402,19 @@ export function InformeMantenimiento({ datos }: { datos: DatosInforme }) {
                         </Text>
                       )}
                     </Text>
-                    <Text
-                      style={[
-                        e.estado,
-                        { color: COLOR_ESTADO[punto.estado] },
-                      ]}
-                    >
-                      {MARCA_ESTADO[punto.estado]}
-                    </Text>
+                    {/* Un punto del checklist se cierra con su marca de
+                        estado. Un campo de la visita previa o del acta se
+                        cierra con lo que se anotó, y los de foto con nada:
+                        la foto es la respuesta. */}
+                    {punto.estado ? (
+                      <Text
+                        style={[e.estado, { color: COLOR_ESTADO[punto.estado] }]}
+                      >
+                        {MARCA_ESTADO[punto.estado]}
+                      </Text>
+                    ) : (
+                      punto.valor && <Text style={e.valorCampo}>{punto.valor}</Text>
+                    )}
                   </View>
 
                   {punto.observacion && (

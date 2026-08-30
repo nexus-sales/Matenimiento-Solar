@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import CabeceraPagina from "../componentes/cabecera-pagina";
+import { NOMBRE_PLANTILLA, type Plantilla } from "@/lib/plantillas";
 
 type Visita = {
   id: string;
@@ -17,6 +18,7 @@ type Visita = {
   clienteId: string;
   clienteNombre: string;
   tecnicoNombre: string | null;
+  plantilla: Plantilla;
   tipo: "semestral" | "anual";
 };
 
@@ -120,7 +122,13 @@ function ListadoMantenimientos() {
                   {visita.clienteNombre}
                 </p>
                 <p className="truncate text-xs text-suave">
-                  {visita.tipo === "semestral" ? "Semestral" : "Anual"}
+                  {/* En una obra, "semestral" o "anual" no significan nada:
+                      lo que distingue la fila es de qué formulario es. */}
+                  {visita.plantilla === "mantenimiento"
+                    ? visita.tipo === "semestral"
+                      ? "Semestral"
+                      : "Anual"
+                    : NOMBRE_PLANTILLA[visita.plantilla]}
                   {visita.cups ? ` · ${visita.cups}` : ""}
                   {visita.isla ? ` · ${visita.isla}` : ""}
                   {visita.tecnicoNombre

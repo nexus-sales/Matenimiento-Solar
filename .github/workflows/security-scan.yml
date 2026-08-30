@@ -1,6 +1,3 @@
-name: Security Scan
-
-# Corre en cada push y en cada Pull Request — nadie tiene que acordarse de invocarlo.
 on:
   push:
     branches: [main, master, develop]
@@ -12,7 +9,7 @@ jobs:
     name: Secretos (gitleaks)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0   # historial completo — un secreto borrado del HEAD sigue comprometido
       - name: Run gitleaks
@@ -21,44 +18,58 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   sast:
-    name: Análisis estático (semgrep)
+    name: Analisis estatico (semgrep)
     runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+      # Semgrep escanea el codigo en busca de patrones peligrosos.
+      # --config auto: reglas segun el lenguaje detectado.
+      # Excluimos las reglas del propio workflow de Actions (github-actions.*):
+      # el aviso de "clavar a SHA" es defensa en profundidad de nivel empresa,
+      # no un fallo del codigo de la app. Camino A: vigilar la app, no el estilo del YAML.
       - name: Run semgrep
-        uses: returntocorp/semgrep-action@v1
-        with:
-          config: auto
+        run: semgrep scan --config auto --error --exclude-rule yaml.github-actions.security.github-actions-mutable-action-tag.github-actions-mutable-action-tag
 
-  dependencias-node:
-    name: Dependencias (npm audit)
+  dependencias:
+    name: Dependencias (segun el stack)
     runs-on: ubuntu-latest
-    if: hashFiles('package.json') != ''
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+
+      # --- Node ---
+      - name: Detectar Node
+        id: node
+        run: if [ -f package.json ]; then echo "found=true" >> "$GITHUB_OUTPUT"; fi
       - uses: actions/setup-node@v4
+        if: steps.node.outputs.found == 'true'
         with:
-          node-version: 20
-      - run: npm audit --audit-level=high
+          node-version: 22
+      - name: npm audit
+        if: steps.node.outputs.found == 'true'
+        run: npm audit --audit-level=high
 
-  dependencias-python:
-    name: Dependencias (pip-audit)
-    runs-on: ubuntu-latest
-    if: hashFiles('requirements.txt', 'pyproject.toml') != ''
-    steps:
-      - uses: actions/checkout@v4
+      # --- Python ---
+      - name: Detectar Python
+        id: py
+        run: if [ -f requirements.txt ] || [ -f pyproject.toml ]; then echo "found=true" >> "$GITHUB_OUTPUT"; fi
       - uses: actions/setup-python@v5
+        if: steps.py.outputs.found == 'true'
         with:
           python-version: '3.12'
-      - run: pip install pip-audit --break-system-packages || pip install pip-audit
-      - run: pip-audit -r requirements.txt || pip-audit
+      - name: pip-audit
+        if: steps.py.outputs.found == 'true'
+        run: |
+          pip install pip-audit
+          if [ -f requirements.txt ]; then pip-audit -r requirements.txt; else pip-audit; fi
 
-  dependencias-otros-stacks:
-    name: Recordatorio — otros stacks
-    runs-on: ubuntu-latest
-    if: hashFiles('composer.json', 'Gemfile', 'go.mod', 'Cargo.toml') != ''
-    steps:
-      - run: |
-          echo "Detectado un stack (PHP/Ruby/Go/Rust) sin job dedicado en este workflow."
-          echo "Añade el paso correspondiente: composer audit / bundle audit / govulncheck / cargo audit."
-          echo "Ver references/herramientas-por-stack.md del skill Auditor para el comando exacto."
+      # --- Aviso para otros stacks ---
+      - name: Recordatorio otros stacks
+        run: |
+          for f in composer.json Gemfile go.mod Cargo.toml; do
+            if [ -f "$f" ]; then
+              echo "::warning::Detectado $f — este stack no tiene auditoria de dependencias en el workflow."
+              echo "Anade el paso: composer audit / bundle audit / govulncheck / cargo audit."
+            fi
+          done

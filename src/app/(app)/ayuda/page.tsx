@@ -164,11 +164,17 @@ function BloqueOficina() {
       >
         <ol>
           <Paso n={1} titulo="Mantenimientos → + Programar visita" />
-          <Paso n={2} titulo="Elige semestral o anual">
-            La semestral muestra al técnico solo los puntos de esa periodicidad;
-            la anual, el checklist completo.
+          <Paso n={2} titulo="Elige el formulario">
+            Visita previa, acta de obra o mantenimiento. Es lo primero que se
+            elige porque decide todo lo demás, incluidos a qué clientes se
+            puede programar.
           </Paso>
-          <Paso n={3} titulo="Asigna técnico">
+          <Paso n={3} titulo="Solo en mantenimiento: semestral o anual">
+            La semestral muestra al técnico solo los puntos de esa periodicidad;
+            la anual, el checklist completo. En una obra no aparece: no hay
+            periodicidad que filtrar.
+          </Paso>
+          <Paso n={4} titulo="Asigna técnico">
             <p>
               Salen primero los de la isla del cliente, y detrás el resto bajo
               «Con desplazamiento» — en las islas menores no hay técnico fijo.
@@ -216,6 +222,64 @@ export default async function AyudaPage() {
         Cómo se usa la aplicación, paso a paso.
       </p>
 
+      <Seccion
+        titulo="Los tres formularios"
+        descripcion="La aplicación cubre el ciclo entero de una instalación, no solo el mantenimiento. Se elige el formulario al programar la visita."
+      >
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-borde text-left text-xs uppercase tracking-wide text-tenue">
+                <th className="pb-2 pr-4 font-medium">Formulario</th>
+                <th className="pb-2 pr-4 font-medium">Cuándo</th>
+                <th className="pb-2 font-medium">Qué se rellena</th>
+              </tr>
+            </thead>
+            <tbody className="text-suave">
+              <tr className="border-b border-borde">
+                <td className="py-2 pr-4 font-medium text-texto">
+                  Visita previa
+                </td>
+                <td className="py-2 pr-4">Antes de instalar</td>
+                <td className="py-2">
+                  51 campos: cubierta, sombras, acceso, canalizaciones,
+                  secciones de cable y fotos de los exteriores para los planos
+                  del ayuntamiento.
+                </td>
+              </tr>
+              <tr className="border-b border-borde">
+                <td className="py-2 pr-4 font-medium text-texto">
+                  Acta de obra
+                </td>
+                <td className="py-2 pr-4">Al terminar la instalación</td>
+                <td className="py-2">
+                  56 campos, y 48 son fotos: es sobre todo un protocolo
+                  fotográfico de la obra ejecutada, con los números de serie de
+                  los paneles y del inversor.
+                </td>
+              </tr>
+              <tr>
+                <td className="py-2 pr-4 font-medium text-texto">
+                  Mantenimiento
+                </td>
+                <td className="py-2 pr-4">Cada 6 o 12 meses</td>
+                <td className="py-2">
+                  Los 24 puntos del contrato, cada uno correcto, con incidencia
+                  o no aplica.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-3 text-sm text-suave">
+          Los tres funcionan igual: se rellenan en el móvil, se firman por
+          técnico y cliente, y producen un PDF con las dos firmas.{" "}
+          <strong>El mantenimiento solo se programa a clientes que lo tienen
+          contratado</strong>; una obra, a cualquier cliente dado de alta —
+          quien va a instalar todavía no tiene nada que mantener.
+        </p>
+      </Seccion>
+
       {/* Al técnico le sale primero lo suyo: la consulta en el móvil, en
           casa del cliente, y no debe tener que desplazarse por lo demás. */}
       {esTecnico ? (
@@ -239,8 +303,14 @@ export default async function AyudaPage() {
 
       <Seccion titulo="Dudas frecuentes">
         <Pregunta q="No me deja firmar la visita">
-          Falta algún punto por marcar, o hay una incidencia sin explicar. El
+          Falta algún campo obligatorio, o hay una incidencia sin explicar. El
           aviso encima del botón dice cuál de las dos cosas es.
+          <span className="mt-1 block">
+            En el mantenimiento hay que marcar los 24 puntos. En una obra solo
+            bloquean los marcados con <strong>*</strong>: los demás se dejan en
+            blanco si no aplican a esa instalación — la marca de la batería
+            cuando no lleva batería, por ejemplo.
+          </span>
         </Pregunta>
         <Pregunta q="He firmado por error">
           Avisa a administración. Una visita firmada no se puede reabrir ni
@@ -283,8 +353,9 @@ export default async function AyudaPage() {
               <tr className="border-b border-borde">
                 <td className="py-2 pr-4 font-medium text-texto">Técnico</td>
                 <td className="py-2">
-                  Ver y rellenar <strong>solo sus visitas</strong>. Consultar
-                  clientes. No programa ni se asigna trabajo.
+                  Ver y rellenar <strong>solo sus visitas</strong>, del
+                  formulario que sean. Los datos del cliente le llegan dentro
+                  de la visita: no consulta la cartera ni programa trabajo.
                 </td>
               </tr>
               <tr className="border-b border-borde">
@@ -299,8 +370,8 @@ export default async function AyudaPage() {
                   Administración
                 </td>
                 <td className="py-2">
-                  Lo anterior, más gestionar usuarios y el catálogo del
-                  checklist.
+                  Lo anterior, más gestionar usuarios y los catálogos de los
+                  tres formularios.
                 </td>
               </tr>
             </tbody>

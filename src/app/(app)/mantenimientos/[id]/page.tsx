@@ -24,6 +24,9 @@ type Visita = {
   tipo: "semestral" | "anual";
   fechaPrevista: string;
   fechaEjecucion: string | null;
+  contactado: boolean;
+  fechaContacto: string | null;
+  viaWhatsapp: boolean;
   firmado: boolean;
   comentariosGenerales: string | null;
   equiposReemplazados: string | null;
@@ -52,6 +55,21 @@ type Cliente = {
   tieneBateria: boolean;
 };
 
+/**
+ * Hoy en formato ISO, en hora LOCAL.
+ *
+ * `toISOString()` convierte a UTC. Canarias va por delante de UTC en verano,
+ * así que entre medianoche y la una de la madrugada UTC sigue en el día
+ * anterior y la fecha de aviso se guardaría con un día de menos. Es el mismo
+ * motivo por el que el resto de la app construye las fechas a mano.
+ */
+function hoyISO(): string {
+  const d = new Date();
+  const mes = String(d.getMonth() + 1).padStart(2, "0");
+  const dia = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${mes}-${dia}`;
+}
+
 function fecha(iso: string | null) {
   return iso ? iso.split("-").reverse().join("/") : "—";
 }
@@ -75,6 +93,7 @@ export default function VisitaPage() {
   const [asignando, setAsignando] = useState(false);
   const [factura, setFactura] = useState("");
   const [guardandoFactura, setGuardandoFactura] = useState(false);
+  const [guardandoAviso, setGuardandoAviso] = useState(false);
   const [puedeAnular, setPuedeAnular] = useState(false);
   const [mostrarAnular, setMostrarAnular] = useState(false);
   const [motivo, setMotivo] = useState("");
@@ -227,6 +246,36 @@ export default function VisitaPage() {
 
     if (!res.ok) {
       setError(await leerErrorApi(res, "No se pudo guardar el nº de factura."));
+      return;
+    }
+    cargar();
+  }
+
+  /**
+   * Deja constancia de que se avisó al cliente.
+   *
+   * Sin esto, a la semana siguiente nadie sabe a quién se llamó ya: o se
+   * llama dos veces o no se llama, y el técnico se planta en una casa donde
+   * no le esperan — a veces después de coger un barco.
+   */
+  async function guardarAviso(cambios: {
+    contactado?: boolean;
+    fechaContacto?: string | null;
+    viaWhatsapp?: boolean;
+  }) {
+    setGuardandoAviso(true);
+    setError(null);
+
+    const res = await fetch(`/api/mantenimientos/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(cambios),
+    });
+
+    setGuardandoAviso(false);
+
+    if (!res.ok) {
+      setError(await leerErrorApi(res, "No se pudo guardar el aviso."));
       return;
     }
     cargar();
@@ -536,6 +585,67 @@ export default function VisitaPage() {
             El acta se conserva con su sello: no se borra para no dejar un
             hueco sin explicación en el histórico del cliente.
           </p>
+        </div>
+      )}
+
+      {/* Aviso al cliente. Solo antes de firmar: después ya no significa
+          nada, porque la visita se hizo. Es trabajo de oficina. */}
+      {puedeAsignar && !visita.firmado && (
+        <div className="mb-5 rounded-lg border border-borde bg-superficie p-4">
+          <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-tenue">
+            Aviso al cliente
+          </h2>
+          <p className="mb-3 text-xs text-tenue">
+            Para que no se le llame dos veces, y para que el técnico no se
+            plante en una casa donde no le esperan.
+          </p>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              disabled={guardandoAviso}
+              onClick={() =>
+                guardarAviso(
+                  visita.contactado
+                    ? { contactado: false, fechaContacto: null }
+                    : { contactado: true, fechaContacto: hoyISO() }
+                )
+              }
+              className={`rounded-full border px-3 py-1 text-xs disabled:opacity-50 ${
+                visita.contactado
+                  ? "border-acento bg-acento-suave text-acento-contraste"
+                  : "border-borde text-suave hover:border-borde-fuerte"
+              }`}
+            >
+              {visita.contactado ? "✓ Avisado" : "Marcar como avisado"}
+            </button>
+
+            {visita.contactado && (
+              <>
+                <input
+                  type="date"
+                  value={visita.fechaContacto ?? ""}
+                  disabled={guardandoAviso}
+                  onChange={(e) =>
+                    guardarAviso({ fechaContacto: e.target.value || null })
+                  }
+                  className="rounded border border-borde-fuerte bg-superficie p-1.5 text-sm focus:border-acento focus:outline-none"
+                />
+                <label className="flex items-center gap-1.5 text-sm text-suave">
+                  <input
+                    type="checkbox"
+                    checked={visita.viaWhatsapp}
+                    disabled={guardandoAviso}
+                    onChange={(e) =>
+                      guardarAviso({ viaWhatsapp: e.target.checked })
+                    }
+                    className="accent-acento"
+                  />
+                  Por WhatsApp
+                </label>
+              </>
+            )}
+          </div>
         </div>
       )}
 

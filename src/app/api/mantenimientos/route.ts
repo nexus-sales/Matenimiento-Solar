@@ -27,7 +27,15 @@ export async function GET(req: NextRequest) {
   const hoy = `${hoyFecha.getFullYear()}-${mes}-${dia}`;
 
   const condicion =
-    estado === "pendientes"
+    // Pendientes de avisar: programadas, sin ejecutar y sin que nadie haya
+    // llamado todavia al cliente. Es la lista de trabajo de la oficina.
+    estado === "sin_avisar"
+      ? and(
+          isNull(intervenciones.fechaEjecucion),
+          eq(intervenciones.contactado, false),
+          eq(intervenciones.anulada, false)
+        )
+      : estado === "pendientes"
       ? isNull(intervenciones.fechaEjecucion)
       : estado === "vencidos"
         ? and(
@@ -45,6 +53,8 @@ export async function GET(req: NextRequest) {
         fechaPrevista: intervenciones.fechaPrevista,
         fechaEjecucion: intervenciones.fechaEjecucion,
         contactado: intervenciones.contactado,
+        fechaContacto: intervenciones.fechaContacto,
+        viaWhatsapp: intervenciones.viaWhatsapp,
         firmado: intervenciones.firmado,
         anulada: intervenciones.anulada,
         tipo: intervenciones.tipo,

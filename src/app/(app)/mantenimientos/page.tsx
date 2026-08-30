@@ -20,12 +20,20 @@ type Visita = {
   tecnicoNombre: string | null;
   plantilla: Plantilla;
   tipo: "semestral" | "anual";
+  fechaContacto: string | null;
+  viaWhatsapp: boolean;
 };
 
-type Estado = "todos" | "pendientes" | "vencidos" | "completados";
+type Estado =
+  | "todos"
+  | "sin_avisar"
+  | "pendientes"
+  | "vencidos"
+  | "completados";
 
 const FILTROS: { valor: Estado; etiqueta: string }[] = [
   { valor: "todos", etiqueta: "Todas" },
+  { valor: "sin_avisar", etiqueta: "Sin avisar" },
   { valor: "vencidos", etiqueta: "Vencidas" },
   { valor: "pendientes", etiqueta: "Pendientes" },
   { valor: "completados", etiqueta: "Completadas" },
@@ -107,7 +115,9 @@ function ListadoMantenimientos() {
         <p className="text-sm text-suave">Cargando…</p>
       ) : visitas.length === 0 ? (
         <p className="rounded-lg border border-borde bg-superficie p-6 text-sm text-suave">
-          No hay visitas que mostrar con este filtro.
+          {estado === "sin_avisar"
+            ? "No queda ninguna visita por avisar."
+            : "No hay visitas que mostrar con este filtro."}
         </p>
       ) : (
         <div className="divide-y divide-borde overflow-hidden rounded-lg border border-borde bg-superficie">
@@ -135,6 +145,23 @@ function ListadoMantenimientos() {
                     ? ` · ${visita.tecnicoNombre}`
                     : " · sin técnico asignado"}
                 </p>
+                {/* Solo se dice algo del aviso mientras la visita esté por
+                    hacer: después ya no aporta nada. */}
+                {!visita.fechaEjecucion && !visita.anulada && (
+                  <p className="mt-0.5 text-xs">
+                    {visita.contactado ? (
+                      <span className="text-suave">
+                        Avisado
+                        {visita.fechaContacto
+                          ? ` el ${formatearFecha(visita.fechaContacto)}`
+                          : ""}
+                        {visita.viaWhatsapp ? " por WhatsApp" : ""}
+                      </span>
+                    ) : (
+                      <span className="text-aviso-contraste">Sin avisar</span>
+                    )}
+                  </p>
+                )}
               </div>
 
               <div className="shrink-0 text-right">

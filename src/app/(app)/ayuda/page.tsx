@@ -174,7 +174,21 @@ function BloqueOficina() {
             la anual, el checklist completo. En una obra no aparece: no hay
             periodicidad que filtrar.
           </Paso>
-          <Paso n={4} titulo="Asigna técnico">
+          <Paso n={4} titulo="Avisa al cliente y déjalo apuntado">
+            <p>
+              En la visita, «Aviso al cliente» → <strong>Marcar como
+              avisado</strong>. Guarda la fecha y, si fue por WhatsApp, se
+              marca la casilla.
+            </p>
+            <p className="mt-1">
+              El filtro <strong>Sin avisar</strong> de la lista es la cola de
+              trabajo: todas las que están programadas y a las que todavía no
+              ha llamado nadie. Sin esto se llama dos veces al mismo cliente, o
+              a ninguno, y el técnico se planta donde no le esperan — a veces
+              después de coger un barco.
+            </p>
+          </Paso>
+          <Paso n={5} titulo="Asigna técnico">
             <p>
               Salen primero los de la isla del cliente, y detrás el resto bajo
               «Con desplazamiento» — en las islas menores no hay técnico fijo.

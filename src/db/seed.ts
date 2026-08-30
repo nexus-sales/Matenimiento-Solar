@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { plantillaCampo, usuarios } from "./schema";
+import { PLANTILLAS, type Plantilla } from "../lib/plantillas";
 import { hashPassword } from "../lib/password";
 import { cargarEnvLocal } from "../lib/cargar-env";
 
@@ -26,23 +27,45 @@ if (!cadena) {
 
 const dbSeed = drizzle(new Pool({ connectionString: cadena }));
 
-// Catálogo inicial del checklist de mantenimiento: los 24 puntos del
-// contrato. Vive en JSON porque lo comparten dos procesos distintos —
-// este seed (TypeScript, vía tsx) y scripts/aplicar-esquema.mjs (JavaScript
-// a secas, que es lo único que se puede ejecutar dentro del contenedor de
-// producción). Un solo origen evita que se desincronicen.
-const ITEMS: {
-  categoria: "paneles" | "estructura" | "inversor" | "cuadros_protecciones" | "baterias";
+// Catálogo inicial de las tres plantillas. Vive en JSON porque lo comparten
+// dos procesos distintos — este seed (TypeScript, vía tsx) y
+// scripts/aplicar-esquema.mjs (JavaScript a secas, que es lo único que se
+// puede ejecutar dentro del contenedor de producción). Un solo origen evita
+// que se desincronicen.
+type CampoSemilla = {
+  plantilla: Plantilla;
+  categoria: string;
   nombre: string;
-  periodicidadMeses: number;
+  tipo: "estado" | "foto" | "texto" | "numero" | "medida" | "si_no" | "lista";
+  obligatorio: boolean;
+  unidad: string | null;
+  opciones: string[] | null;
+  ayuda: string | null;
+  periodicidadMeses: number | null;
   orden: number;
-}[] = JSON.parse(
-  readFileSync(new URL("./checklist-items.json", import.meta.url), "utf8")
-);
+};
+
+const ARCHIVO: Record<Plantilla, string> = {
+  mantenimiento: "mantenimiento.json",
+  visita_previa: "visita-previa.json",
+  acta_obra: "acta-obra.json",
+};
+
+function campos(plantilla: Plantilla): CampoSemilla[] {
+  return JSON.parse(
+    readFileSync(
+      new URL(`./plantillas/${ARCHIVO[plantilla]}`, import.meta.url),
+      "utf8"
+    )
+  );
+}
 
 async function seed() {
-  console.log(`Sembrando ${ITEMS.length} puntos de checklist...`);
-  await dbSeed.insert(plantillaCampo).values(ITEMS);
+  for (const plantilla of PLANTILLAS) {
+    const lista = campos(plantilla);
+    console.log(`Sembrando ${lista.length} campos de ${plantilla}...`);
+    await dbSeed.insert(plantillaCampo).values(lista);
+  }
   console.log("Listo.");
 
   const emailAdmin = process.env.SEED_ADMIN_EMAIL || "admin@sr-energia.local";

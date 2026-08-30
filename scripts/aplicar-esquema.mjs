@@ -263,9 +263,25 @@ try {
 
   // --- 4. datos iniciales ---------------------------------------------
   paso("Datos iniciales");
-  const items = JSON.parse(
-    readFileSync(path.join("src", "db", "checklist-items.json"), "utf8")
+  // Las tres plantillas. Se siembran por separado porque el catalogo de
+  // mantenimiento ya existe en las instalaciones antiguas: comprobar solo si
+  // la tabla tiene filas daria por sembradas tambien las dos nuevas, que no
+  // llegarian nunca y sin un solo aviso.
+  const PLANTILLAS = ["mantenimiento", "visita_previa", "acta_obra"];
+  const ARCHIVO = {
+    mantenimiento: "mantenimiento.json",
+    visita_previa: "visita-previa.json",
+    acta_obra: "acta-obra.json",
+  };
+  const campos = Object.fromEntries(
+    PLANTILLAS.map((p) => [
+      p,
+      JSON.parse(
+        readFileSync(path.join("src", "db", "plantillas", ARCHIVO[p]), "utf8")
+      ),
+    ])
   );
+  const items = PLANTILLAS.flatMap((p) => campos[p]);
 
   // Simulando sobre una base vacía, las tablas no existen todavía: no se
   // las puede consultar. En la ejecución real sí existen, porque el paso 1
@@ -280,23 +296,43 @@ try {
     process.exit(0);
   }
 
-  const { rows: [c] } = await cliente.query(
-    "select count(*)::int n from plantilla_campo"
+  const { rows: yaHay } = await cliente.query(
+    "select plantilla, count(*)::int n from plantilla_campo group by plantilla"
   );
-  if (c.n > 0) {
-    aviso(`El catálogo ya tiene ${c.n} puntos — se omite`);
-  } else if (SIMULAR) {
-    aviso(`Se sembrarían ${items.length} puntos de checklist`);
-  } else {
-    for (const i of items) {
+  const sembradas = new Map(yaHay.map((r) => [r.plantilla, r.n]));
+
+  for (const plantilla of PLANTILLAS) {
+    const lista = campos[plantilla];
+    const existentes = sembradas.get(plantilla) || 0;
+    if (existentes > 0) {
+      aviso(`${plantilla}: ya tiene ${existentes} campos — se omite`);
+      continue;
+    }
+    if (SIMULAR) {
+      aviso(`${plantilla}: se sembrarían ${lista.length} campos`);
+      continue;
+    }
+    for (const i of lista) {
       await cliente.query(
         `insert into plantilla_campo
-           (categoria, nombre, periodicidad_meses, orden)
-         values ($1, $2, $3, $4)`,
-        [i.categoria, i.nombre, i.periodicidadMeses, i.orden]
+           (plantilla, categoria, nombre, tipo, obligatorio,
+            unidad, opciones, ayuda, periodicidad_meses, orden)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        [
+          plantilla,
+          i.categoria,
+          i.nombre,
+          i.tipo,
+          i.obligatorio,
+          i.unidad,
+          i.opciones,
+          i.ayuda,
+          i.periodicidadMeses,
+          i.orden,
+        ]
       );
     }
-    ok(`${items.length} puntos de checklist sembrados`);
+    ok(`${plantilla}: ${lista.length} campos sembrados`);
   }
 
   const { rows: [u] } = await cliente.query(

@@ -72,13 +72,6 @@ export const plantillaEnum = pgEnum("plantilla", [
   "acta_obra",
 ]);
 
-export const categoriaChecklistEnum = pgEnum("categoria_checklist", [
-  "paneles",
-  "estructura",
-  "inversor",
-  "cuadros_protecciones",
-  "baterias",
-]);
 
 // ---------- Usuario ----------
 export const usuarios = pgTable("usuarios", {
@@ -204,7 +197,7 @@ export const intervenciones = pgTable("intervenciones", {
 export const plantillaCampo = pgTable("plantilla_campo", {
   id: uuid("id").defaultRandom().primaryKey(),
   plantilla: plantillaEnum("plantilla").notNull().default("mantenimiento"),
-  categoria: categoriaChecklistEnum("categoria").notNull(),
+  categoria: text("categoria").notNull(),
   nombre: text("nombre").notNull(),
   tipo: tipoCampoEnum("tipo").notNull().default("estado"),
 
@@ -285,7 +278,7 @@ export const observacionesBloque = pgTable(
     intervencionId: uuid("intervencion_id")
       .notNull()
       .references(() => intervenciones.id, { onDelete: "cascade" }),
-    categoria: categoriaChecklistEnum("categoria").notNull(),
+    categoria: text("categoria").notNull(),
     observacion: text("observacion"),
   },
   (t) => ({

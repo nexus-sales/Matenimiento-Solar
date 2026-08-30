@@ -36,6 +36,13 @@
       "when": 1788075607550,
       "tag": "0004_generalizar_plantillas",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788091372370,
+      "tag": "0005_bloques_libres",
+      "breakpoints": true
     }
   ]
 }

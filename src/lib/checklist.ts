@@ -1,6 +1,13 @@
 import { z } from "zod";
 
-/** Bloques del checklist, en el orden del contrato de mantenimiento. */
+/**
+ * Bloques del checklist de mantenimiento, en el orden del contrato.
+ *
+ * Se derivan del registro general de plantillas para no tener la misma lista
+ * escrita en dos sitios: si se renombra un bloque allí, aquí cambia solo.
+ */
+import { BLOQUES } from "./plantillas";
+
 export const CATEGORIAS = [
   "paneles",
   "estructura",
@@ -11,13 +18,9 @@ export const CATEGORIAS = [
 
 export type Categoria = (typeof CATEGORIAS)[number];
 
-export const NOMBRE_CATEGORIA: Record<Categoria, string> = {
-  paneles: "Módulos / Paneles",
-  estructura: "Estructuras",
-  inversor: "Equipos electrónicos / Inversores",
-  cuadros_protecciones: "Cuadros, cables, interruptores y protecciones",
-  baterias: "Acumulación / Baterías",
-};
+export const NOMBRE_CATEGORIA = Object.fromEntries(
+  BLOQUES.mantenimiento.map((b) => [b.clave, b.nombre])
+) as Record<Categoria, string>;
 
 export const ESTADOS_PUNTO = [
   "sin_revisar",

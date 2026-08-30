@@ -179,8 +179,12 @@ src/
     validacion.ts             NIF/NIE/CIF, CUPS, código postal
     permisos.ts               guardas de rol en la API
     tema.ts                   script anti-parpadeo del tema
+    plantillas.ts             las tres plantillas y sus bloques
   proxy.ts                    protección de rutas (era middleware.ts)
-    checklist-items.json      los 24 puntos, compartidos por seed y servidor
+  db/plantillas/              catálogos de campos, compartidos por seed y servidor
+    mantenimiento.json        los 24 puntos del contrato
+    visita-previa.json        51 campos de la visita previa a obra
+    acta-obra.json            56 campos del acta de finalización
 scripts/
   preparar-bd.mjs             puesta en marcha completa (local)
   aplicar-esquema.mjs         esquema en un servidor ya provisionado

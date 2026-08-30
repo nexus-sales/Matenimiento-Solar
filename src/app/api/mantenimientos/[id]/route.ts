@@ -56,10 +56,18 @@ export async function GET(
           .limit(1)
       : [null];
 
+    // Solo los campos de SU plantilla. Sin este filtro, ahora que el
+    // catalogo tiene los 131 campos de las tres, una visita de
+    // mantenimiento mostraria tambien los del acta de obra.
     const itemsCatalogo = await tx
       .select()
       .from(plantillaCampo)
-      .where(eq(plantillaCampo.activo, true))
+      .where(
+        and(
+          eq(plantillaCampo.activo, true),
+          eq(plantillaCampo.plantilla, visita.plantilla)
+        )
+      )
       .orderBy(asc(plantillaCampo.orden));
 
     const filasRespuesta = await tx
@@ -94,7 +102,8 @@ export async function GET(
 
     const checklist = itemsCatalogo
       // Una visita semestral no arrastra los puntos anuales: se filtran
-      // aquí para que el técnico no los vea ni pueda responderlos.
+      // aquí para que el técnico no los vea ni pueda responderlos. En las
+      // otras dos plantillas no hay periodicidad y pasan todos.
       .filter((item) => itemAplicaAVisita(item.periodicidadMeses, visita.tipo))
       .map((item) => {
         const respuesta = respuestasPorItem.get(item.id) ?? null;

@@ -4,11 +4,13 @@ import { conSesionRLS } from "@/db";
 import {
   plantillaCampo,
   respuestas,
+  respuestaFoto,
   intervenciones,
 } from "@/db/schema";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { obtenerSesion } from "@/lib/auth";
 import { itemAplicaAVisita } from "@/lib/checklist";
+import { campoPendiente } from "@/lib/plantillas";
 import { validarDocumento } from "@/lib/validacion";
 
 /**
@@ -86,7 +88,12 @@ export async function POST(
     const items = await tx
       .select()
       .from(plantillaCampo)
-      .where(eq(plantillaCampo.activo, true))
+      .where(
+        and(
+          eq(plantillaCampo.activo, true),
+          eq(plantillaCampo.plantilla, visita.plantilla)
+        )
+      )
       .orderBy(asc(plantillaCampo.orden));
 
     const aplicables = items.filter((i) =>
@@ -100,15 +107,32 @@ export async function POST(
 
     const porItem = new Map(filasRespuesta.map((r) => [r.campoId, r]));
 
+    // Cuantas fotos tiene cada respuesta: en el acta de obra la mayoria de
+    // los campos obligatorios se cumplen subiendo una foto, no marcando nada,
+    // asi que sin este recuento no se puede saber si estan hechos.
+    const idsRespuesta = filasRespuesta.map((r) => r.id);
+    const conteoFotos = new Map<string, number>();
+    if (idsRespuesta.length) {
+      const filas = await tx
+        .select({
+          respuestaId: respuestaFoto.respuestaId,
+          n: sql<number>`count(*)::int`,
+        })
+        .from(respuestaFoto)
+        .where(inArray(respuestaFoto.respuestaId, idsRespuesta))
+        .groupBy(respuestaFoto.respuestaId);
+      for (const f of filas) conteoFotos.set(f.respuestaId, f.n);
+    }
+
     const pendientes = aplicables.filter((i) => {
-      const r = porItem.get(i.id);
-      return !r || r.estado === "sin_revisar";
+      const r = porItem.get(i.id) ?? null;
+      return campoPendiente(i, r, r ? (conteoFotos.get(r.id) ?? 0) : 0);
     });
 
     if (pendientes.length) {
       return {
         error:
-          `Quedan ${pendientes.length} punto(s) sin revisar. ` +
+          `Quedan ${pendientes.length} campo(s) sin completar. ` +
           `El primero: "${pendientes[0].nombre}".`,
         estado: 409,
       };

@@ -8,16 +8,33 @@ import {
 } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { obtenerSesion } from "@/lib/auth";
-import { esquemaCategoria, esquemaEstadoPunto } from "@/lib/checklist";
+import { esquemaEstadoPunto } from "@/lib/checklist";
 
+/**
+ * Un campo se responde con un estado (checklist de mantenimiento), con un
+ * valor (texto, medida, numero, si/no, lista) o solo con fotos. Los tres
+ * campos son opcionales por eso, y lo que NO viene no se toca: mandar
+ * `observacion` sin `valor` no debe borrar el valor ya escrito.
+ */
 const esquemaRespuesta = z.object({
   itemId: z.string().uuid(),
-  estado: esquemaEstadoPunto,
+  estado: esquemaEstadoPunto.optional(),
+  valor: z.string().max(2000).optional().nullable(),
   observacion: z.string().max(2000).optional().nullable(),
 });
 
+// El bloque dejo de ser un enum: cada plantilla trae los suyos y el
+// administrador podra crear mas. Se valida que sea una clave razonable, no
+// que este en una lista cerrada.
+const esquemaBloque = z
+  .string()
+  .trim()
+  .min(1)
+  .max(60)
+  .regex(/^[a-z0-9_]+$/, "Clave de bloque invalida.");
+
 const esquemaObservacionBloque = z.object({
-  categoria: esquemaCategoria,
+  categoria: esquemaBloque,
   observacion: z.string().max(2000).optional().nullable(),
 });
 
@@ -53,8 +70,30 @@ export async function PUT(
     );
   }
 
-  const { itemId, estado, observacion } = parseo.data;
-  const texto = observacion?.trim() || null;
+  const { itemId } = parseo.data;
+
+  // Distinguir "no viene" de "viene vacio": lo primero deja el dato como
+  // estaba, lo segundo lo borra a proposito. Sin esta distincion, guardar la
+  // observacion de un campo borraria su valor, y al reves.
+  const cambios: {
+    estado?: (typeof parseo.data)["estado"];
+    valor?: string | null;
+    observacion?: string | null;
+  } = {};
+  if (parseo.data.estado !== undefined) cambios.estado = parseo.data.estado;
+  if (parseo.data.valor !== undefined) {
+    cambios.valor = parseo.data.valor?.trim() || null;
+  }
+  if (parseo.data.observacion !== undefined) {
+    cambios.observacion = parseo.data.observacion?.trim() || null;
+  }
+
+  if (Object.keys(cambios).length === 0) {
+    return NextResponse.json(
+      { error: "No hay nada que guardar." },
+      { status: 400 }
+    );
+  }
 
   // AQUÍ NO se exige la observación de una incidencia, aunque parezca lo
   // lógico. El técnico marca "incidencia" y DESPUÉS escribe lo que ha visto:
@@ -96,7 +135,7 @@ export async function PUT(
     if (existente) {
       const [fila] = await tx
         .update(respuestas)
-        .set({ estado, observacion: texto })
+        .set(cambios)
         .where(eq(respuestas.id, existente.id))
         .returning();
       return { fila };
@@ -104,7 +143,7 @@ export async function PUT(
 
     const [fila] = await tx
       .insert(respuestas)
-      .values({ intervencionId, campoId: itemId, estado, observacion: texto })
+      .values({ intervencionId, campoId: itemId, ...cambios })
       .returning();
     return { fila };
   });

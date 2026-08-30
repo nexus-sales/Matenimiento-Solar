@@ -84,3 +84,30 @@ export function bloquesDe(
 export function nombreBloque(plantilla: Plantilla, clave: string): string {
   return BLOQUES[plantilla].find((b) => b.clave === clave)?.nombre ?? clave;
 }
+
+/**
+ * Si un campo impide firmar.
+ *
+ * El checklist de mantenimiento exige los 24 puntos: dejar uno sin mirar es
+ * dejar la visita a medias. En la visita previa y el acta no vale la misma
+ * regla — hay campos que sencillamente no aplican a esa obra (la marca de la
+ * batería cuando no lleva batería, la sexta foto de canalización cuando el
+ * recorrido se ve en tres), y exigirlos todos obligaría al técnico a
+ * rellenar basura para poder cerrar. Ahí solo bloquean los marcados como
+ * obligatorios, que son los que el formulario original marca con "Obligatorio!".
+ *
+ * Vive aquí y no en la pantalla porque el servidor tiene que aplicar la misma
+ * regla al firmar: si solo la comprobara el navegador, no la comprobaría nadie.
+ */
+export function campoPendiente(
+  campo: { tipo: string; obligatorio: boolean },
+  respuesta: { estado?: string | null; valor?: string | null } | null,
+  numFotos: number
+): boolean {
+  if (campo.tipo === "estado") {
+    return !respuesta || respuesta.estado === "sin_revisar";
+  }
+  if (!campo.obligatorio) return false;
+  if (campo.tipo === "foto") return numFotos === 0;
+  return !respuesta?.valor?.trim();
+}

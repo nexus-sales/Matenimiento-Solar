@@ -10,7 +10,7 @@ import {
   respuestaFoto,
   usuarios,
 } from "@/db/schema";
-import { asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { obtenerSesion } from "@/lib/auth";
 import { CATEGORIAS, itemAplicaAVisita, type Categoria } from "@/lib/checklist";
 import { InformeMantenimiento, type DatosInforme } from "@/lib/informe-pdf";
@@ -75,7 +75,12 @@ export async function GET(
     const items = await tx
       .select()
       .from(plantillaCampo)
-      .where(eq(plantillaCampo.activo, true))
+      .where(
+        and(
+          eq(plantillaCampo.activo, true),
+          eq(plantillaCampo.plantilla, visita.plantilla)
+        )
+      )
       .orderBy(asc(plantillaCampo.orden));
 
     const filasRespuesta = await tx

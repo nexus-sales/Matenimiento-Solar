@@ -4,40 +4,23 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { leerErrorApi } from "@/lib/errores-api";
+import { NOMBRE_TIPO_VISITA, type EstadoPunto } from "@/lib/checklist";
 import {
-  CATEGORIAS,
-  ESTADOS_PUNTO,
-  NOMBRE_CATEGORIA,
-  NOMBRE_ESTADO,
-  NOMBRE_TIPO_VISITA,
-  type Categoria,
-  type EstadoPunto,
-} from "@/lib/checklist";
+  bloquesDe,
+  campoPendiente,
+  NOMBRE_PLANTILLA,
+  type Plantilla,
+} from "@/lib/plantillas";
 import { Firma } from "./panel-firma";
-import { FotosPunto } from "./fotos-punto";
+import { CampoRespuesta, type FilaCampo } from "./campo";
 
-type Item = {
-  id: string;
-  categoria: Categoria;
-  nombre: string;
-  periodicidadMeses: number;
-  orden: number;
-};
-
-type Respuesta = {
-  id: string;
-  estado: EstadoPunto;
-  observacion: string | null;
-} | null;
-
-type Fila = {
-  item: Item;
-  respuesta: Respuesta;
-  fotos: { id: string; pie: string | null }[];
-};
+// La forma de un campo y su respuesta vive en ./campo, que es quien los
+// pinta. Aquí solo se manejan como filas.
+type Fila = FilaCampo;
 
 type Visita = {
   id: string;
+  plantilla: Plantilla;
   tipo: "semestral" | "anual";
   fechaPrevista: string;
   fechaEjecucion: string | null;
@@ -73,12 +56,6 @@ function fecha(iso: string | null) {
   return iso ? iso.split("-").reverse().join("/") : "—";
 }
 
-const ESTILO_ESTADO: Record<EstadoPunto, string> = {
-  sin_revisar: "border-borde-fuerte text-suave",
-  correcto: "border-acento bg-acento-suave text-acento-contraste",
-  incidencia: "border-peligro-borde bg-peligro-suave text-peligro-contraste",
-  no_aplica: "border-borde bg-superficie-fuerte text-tenue",
-};
 
 export default function VisitaPage() {
   const { id } = useParams<{ id: string }>();
@@ -172,9 +149,15 @@ export default function VisitaPage() {
   /** Guarda punto a punto: en una cubierta no se pulsa "guardar" al final. */
   async function guardarPunto(
     fila: Fila,
-    cambios: { estado?: EstadoPunto; observacion?: string | null }
+    cambios: {
+      estado?: EstadoPunto;
+      valor?: string | null;
+      observacion?: string | null;
+    }
   ) {
     const estado = cambios.estado ?? fila.respuesta?.estado ?? "sin_revisar";
+    const valor =
+      cambios.valor !== undefined ? cambios.valor : (fila.respuesta?.valor ?? null);
     const observacion =
       cambios.observacion !== undefined
         ? cambios.observacion
@@ -185,20 +168,29 @@ export default function VisitaPage() {
         f.item.id === fila.item.id
           ? {
               ...f,
-              respuesta: { id: f.respuesta?.id ?? "", estado, observacion },
+              respuesta: {
+                id: f.respuesta?.id ?? "",
+                estado,
+                valor,
+                observacion,
+              },
             }
           : f
       )
     );
 
+    // Se manda solo lo que ha cambiado, no el estado entero de la fila: el
+    // servidor distingue "no viene" de "viene vacío", y mandarlo todo haría
+    // que guardar una observación pisara el valor con lo que tuviera la
+    // pantalla, que puede ir por detrás.
     const res = await fetch(`/api/mantenimientos/${id}/checklist`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ itemId: fila.item.id, estado, observacion }),
+      body: JSON.stringify({ itemId: fila.item.id, ...cambios }),
     });
 
     if (!res.ok) {
-      setError(await leerErrorApi(res, "No se pudo guardar el punto."));
+      setError(await leerErrorApi(res, "No se pudo guardar el campo."));
       cargar();
     } else {
       setError(null);
@@ -339,8 +331,10 @@ export default function VisitaPage() {
     );
   }
 
+  // "Respondido" depende del tipo: un campo de foto se responde subiendo
+  // una foto, no marcando un estado.
   const revisados = checklist.filter(
-    (f) => f.respuesta && f.respuesta.estado !== "sin_revisar"
+    (f) => !campoPendiente(f.item, f.respuesta, f.fotos.length)
   ).length;
   const incidencias = checklist.filter(
     (f) => f.respuesta?.estado === "incidencia"
@@ -357,8 +351,9 @@ export default function VisitaPage() {
     checklist.length > 0 &&
     incidenciasSinExplicar === 0;
 
-  const categoriasVisibles = CATEGORIAS.filter((c) =>
-    checklist.some((f) => f.item.categoria === c)
+  const bloques = bloquesDe(
+    visita.plantilla,
+    checklist.map((f) => f.item.categoria)
   );
 
   return (
@@ -375,8 +370,13 @@ export default function VisitaPage() {
             </Link>
           </h1>
           <p className="mt-0.5 text-sm text-suave">
-            Visita {NOMBRE_TIPO_VISITA[visita.tipo].toLowerCase()} · prevista{" "}
-            {fecha(visita.fechaPrevista)}
+            {/* El tipo semestral/anual solo significa algo en el checklist
+                de mantenimiento: en una visita previa o un acta de obra no
+                hay periodicidad que filtrar. */}
+            {visita.plantilla === "mantenimiento"
+              ? `Visita ${NOMBRE_TIPO_VISITA[visita.tipo].toLowerCase()}`
+              : NOMBRE_PLANTILLA[visita.plantilla]}{" "}
+            · prevista {fecha(visita.fechaPrevista)}
             {!puedeAsignar &&
               (tecnico ? ` · ${tecnico.nombre}` : " · sin técnico asignado")}
           </p>
@@ -463,7 +463,7 @@ export default function VisitaPage() {
 
       <div className="mb-4 flex flex-wrap items-center gap-3 text-sm">
         <span className="text-suave">
-          {revisados} de {checklist.length} puntos revisados
+          {revisados} de {checklist.length} campos completados
         </span>
         {incidencias > 0 && (
           <span className="rounded-full bg-peligro-suave px-2 py-0.5 text-xs text-peligro-contraste">
@@ -478,89 +478,25 @@ export default function VisitaPage() {
         </p>
       )}
 
-      {categoriasVisibles.map((categoria) => (
-        <section key={categoria} className="mb-5">
+      {bloques.map((bloque) => (
+        <section key={bloque.clave} className="mb-5">
           <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-tenue">
-            {NOMBRE_CATEGORIA[categoria]}
+            {bloque.nombre}
           </h2>
 
           <div className="divide-y divide-borde overflow-hidden rounded-lg border border-borde bg-superficie">
             {checklist
-              .filter((f) => f.item.categoria === categoria)
-              .map((fila) => {
-                const estado = fila.respuesta?.estado ?? "sin_revisar";
-                return (
-                  <div key={fila.item.id} className="p-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <p className="text-sm text-texto">
-                        {fila.item.nombre}
-                        <span className="ml-2 text-xs text-tenue">
-                          {fila.item.periodicidadMeses} meses
-                        </span>
-                      </p>
-                    </div>
-
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {ESTADOS_PUNTO.filter((e) => e !== "sin_revisar").map(
-                        (opcion) => (
-                          <button
-                            key={opcion}
-                            type="button"
-                            disabled={visita.firmado}
-                            onClick={() =>
-                              guardarPunto(fila, { estado: opcion })
-                            }
-                            className={`rounded-full border px-2.5 py-1 text-xs disabled:opacity-60 ${
-                              estado === opcion
-                                ? ESTILO_ESTADO[opcion]
-                                : "border-borde text-suave hover:border-borde-fuerte"
-                            }`}
-                          >
-                            {NOMBRE_ESTADO[opcion]}
-                          </button>
-                        )
-                      )}
-                    </div>
-
-                    {(estado === "incidencia" ||
-                      fila.respuesta?.observacion) && (
-                      <>
-                        <textarea
-                          rows={2}
-                          disabled={visita.firmado}
-                          defaultValue={fila.respuesta?.observacion ?? ""}
-                          placeholder={
-                            estado === "incidencia"
-                              ? "Qué has encontrado"
-                              : "Observación"
-                          }
-                          onBlur={(e) =>
-                            guardarPunto(fila, {
-                              observacion: e.target.value || null,
-                            })
-                          }
-                          className="mt-2 w-full rounded border border-borde-fuerte bg-superficie p-2 text-sm focus:border-acento focus:outline-none"
-                        />
-                        {estado === "incidencia" &&
-                          !fila.respuesta?.observacion?.trim() && (
-                            <p className="mt-1 text-xs text-aviso-contraste">
-                              Explica la incidencia: sin esto no se puede
-                              firmar la visita.
-                            </p>
-                          )}
-                      </>
-                    )}
-
-                    <FotosPunto
-                      intervencionId={id}
-                      itemId={fila.item.id}
-                      fotos={fila.fotos}
-                      bloqueado={visita.firmado}
-                      onCambio={cargar}
-                    />
-                  </div>
-                );
-              })}
+              .filter((f) => f.item.categoria === bloque.clave)
+              .map((fila) => (
+                <CampoRespuesta
+                  key={fila.item.id}
+                  fila={fila}
+                  intervencionId={id}
+                  bloqueado={visita.firmado}
+                  onGuardar={guardarPunto}
+                  onCambioFotos={cargar}
+                />
+              ))}
           </div>
 
           {/* Observación del bloque entero: lo que se dice de "toda la
@@ -568,9 +504,9 @@ export default function VisitaPage() {
           <textarea
             rows={2}
             disabled={visita.firmado}
-            defaultValue={obsBloque[categoria] ?? ""}
-            placeholder={`Observación general de ${NOMBRE_CATEGORIA[categoria].toLowerCase()}`}
-            onBlur={(e) => guardarObservacionBloque(categoria, e.target.value)}
+            defaultValue={obsBloque[bloque.clave] ?? ""}
+            placeholder={`Observación general de ${bloque.nombre.toLowerCase()}`}
+            onBlur={(e) => guardarObservacionBloque(bloque.clave, e.target.value)}
             className="mt-2 w-full rounded border border-borde bg-superficie p-2 text-sm focus:border-acento focus:outline-none"
           />
         </section>

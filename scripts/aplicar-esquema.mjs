@@ -276,6 +276,42 @@ try {
     `);
     ok(`${ROL_APP}: lectura y escritura, sujeto a RLS`);
 
+    // --- Restringir la lectura del hash de contraseña -----------------
+    //
+    // PENDIENTE DE REVISIÓN: solo se ejecuta con RESTRINGIR_COLUMNAS_USUARIOS=si.
+    //
+    // El GRANT de arriba da SELECT sobre TODAS las columnas de `usuarios`,
+    // incluida `password_hash`, y la política RLS `usuarios_select` deja
+    // leer la tabla a cualquiera con sesión. Hoy no se filtra nada porque
+    // las cinco consultas piden columnas explícitas — pero el día que
+    // alguien escriba `select()` sobre esa tabla, los hashes salen al
+    // navegador sin que nada lo impida. Ya pasó una vez, con el login.
+    //
+    // Con esto, ese `select()` futuro falla con un error de permisos
+    // —ruidoso, en el primer arranque— en vez de filtrar en silencio.
+    //
+    // Va AQUÍ y no en rls.sql a propósito: el GRANT de arriba se ejecuta en
+    // cada despliegue, así que un REVOKE puesto en cualquier otro sitio se
+    // desharía solo en el siguiente. Tiene que ir justo después.
+    //
+    // Comprobado antes de escribirlo: solo el login lee `password_hash`, y
+    // lo hace con ROL_AUTH, no con ROL_APP. Las escrituras de usuarios usan
+    // INSERT y UPDATE —que este REVOKE no toca— y sus `.returning()` piden
+    // columnas explícitas, ninguna de ellas el hash.
+    if (process.env.RESTRINGIR_COLUMNAS_USUARIOS === "si") {
+      await cliente.query(`
+        REVOKE SELECT ON usuarios FROM ${ROL_APP};
+        GRANT SELECT (id, nombre, email, documento, rol, isla, activo, creado_en)
+          ON usuarios TO ${ROL_APP};
+      `);
+      ok(`${ROL_APP}: sin lectura de password_hash`);
+    } else {
+      aviso(
+        `${ROL_APP} puede leer password_hash — ` +
+          "actívalo con RESTRINGIR_COLUMNAS_USUARIOS=si"
+      );
+    }
+
     // Toda la superficie del único rol que se salta RLS: seis columnas de
     // una tabla, solo lectura. `nombre` entra porque la sesión lo muestra.
     await cliente.query(

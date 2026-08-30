@@ -9,14 +9,40 @@
  *   AUTH_MODO_PRUEBAS=true        (en .env.local, nunca en producción)
  *   MODO_PRUEBAS_USER_ID=<uuid>   id de un usuario admin ya sembrado
  */
+/**
+ * Señales de que esto NO es la máquina de nadie desarrollando.
+ *
+ * Antes bastaba con que `NODE_ENV` no valiera exactamente "production" para
+ * que el guardián no disparase: toda la autenticación de la aplicación
+ * colgaba del valor de una sola variable de entorno, definida fuera del
+ * repositorio. Ahora hacen falta las tres a la vez para quedar abierta.
+ *
+ * No lo cierra del todo — para eso el modo tendría que no existir en la
+ * compilación de producción— pero deja de fallar hacia el lado abierto por
+ * un solo descuido.
+ */
+function pareceServidor(): string | null {
+  if (process.env.NODE_ENV === "production") return "NODE_ENV=production";
+  if (process.env.DOKPLOY_DEPLOYMENT_ID) return "hay DOKPLOY_DEPLOYMENT_ID";
+
+  // Una base remota no es una base de desarrollo. Si no hay DATABASE_URL no
+  // se concluye nada: puede ser un arranque a medio configurar.
+  const url = process.env.DATABASE_URL;
+  if (url && !/@(localhost|127\.0\.0\.1|\[::1\])[:/]/.test(url)) {
+    return "DATABASE_URL no apunta a localhost";
+  }
+  return null;
+}
+
 export function modoPruebasActivo(): boolean {
   const activo = process.env.AUTH_MODO_PRUEBAS === "true";
 
-  if (activo && process.env.NODE_ENV === "production") {
+  const senal = activo ? pareceServidor() : null;
+  if (senal) {
     throw new Error(
-      "AUTH_MODO_PRUEBAS está activado con NODE_ENV=production. " +
-        "Esto desactivaría la autenticación en un despliegue real — " +
-        "la app se detiene aquí a propósito. Quita esa variable de entorno."
+      `AUTH_MODO_PRUEBAS está activado y esto parece un servidor (${senal}). ` +
+        "Eso desactivaría la autenticación de toda la aplicación — " +
+        "se detiene aquí a propósito. Quita esa variable de entorno."
     );
   }
 

@@ -437,3 +437,226 @@ por dos partes, no una operación de trabajo diario.
 La banda va arriba y ocupa el ancho, no es una marca de agua diagonal: una marca
 de agua se confunde con un fondo decorativo, una banda roja al principio de cada
 página no se pasa por alto.
+
+---
+
+## 2026-08-30 — De un formulario a tres
+
+El cliente pidió el módulo de obras nuevas: informe de visita previa y acta de
+finalización. Lo primero que se decidió es que **no son tres módulos, son tres
+plantillas del mismo motor**. Un formulario que se rellena en el móvil, se firma
+por técnico y cliente y produce un PDF: eso ya existía, y lo único que cambia es
+qué campos trae y cómo se responde cada uno.
+
+### El renombrado se hizo a mano, no con drizzle-kit
+
+`drizzle-kit` **se negó a generar la migración**: no puede distinguir un
+renombrado de un borrar-y-crear, y pide confirmarlo por consola. Fue una suerte
+— una migración generada a ciegas habría recreado las tablas y borrado los datos.
+
+Se escribió a mano: `mantenimientos` → `intervenciones`,
+`checklist_item_definicion` → `plantilla_campo`,
+`mantenimiento_checklist_respuesta` → `respuestas`,
+`mantenimiento_observacion_bloque` → `observaciones_bloque`. Todo son `RENAME`,
+incluidas restricciones e índices, que **PostgreSQL no renombra solo** al
+renombrar su tabla. Los nombres reales estaban truncados a 63 caracteres y hubo
+que consultarlos en la base.
+
+Las **rutas y los textos siguen diciendo «mantenimientos»**. El usuario piensa
+en mantenimientos y obras, no en «intervenciones», que es un nombre del modelo.
+
+### Las políticas RLS sobrevivieron solas al renombrado
+
+Comprobado en la base después de migrar: `respuesta_tecnico_propio` se reescribió
+sola y ahora dice `FROM intervenciones m`. PostgreSQL las guarda por
+identificador interno, no por texto. Era el punto que más podía haber mordido en
+silencio — una política que apunta a una tabla que ya no se llama así dejaría de
+proteger sin dar ningún error.
+
+### El campo se responde de siete maneras, no solo con un estado
+
+El acta de obra es sobre todo un protocolo fotográfico y la visita previa pide
+medidas y metros, así que `plantilla_campo` gana `tipo`: estado, foto, texto,
+numero, medida, si_no o lista. Más `obligatorio`, `unidad`, `opciones` y `ayuda`.
+
+**`respuestas.valor` se guarda como texto a propósito.** Una medida es
+«6.40 x 3.90» y una sección «25mm²». No son números: son lo que el técnico
+escribió, y forzarlos a un tipo numérico perdería el dato. El tipo `numero` solo
+cambia el teclado que abre el móvil.
+
+### El bloque deja de ser un enum
+
+`categoria_checklist` tenía cinco valores, los del contrato. La visita previa
+habla de sombras y canalizaciones; el acta, de anclajes y subcuadros.
+
+Se podría haber ampliado el enum, y se descartó por dos razones. De diseño:
+obligaría a una migración cada vez que un instalador quiera un bloque propio, y
+el editor de plantillas existe justo para evitarlo. Y técnica, que fue la que
+zanjó el asunto: **`ALTER TYPE ... ADD VALUE` no permite usar el valor nuevo en
+la misma transacción**, así que migración y siembra no podrían ir juntas.
+
+Ahora es texto. La lista de bloques conocidos vive en `src/lib/plantillas.ts`, y
+un bloque desconocido se muestra igual con su clave como título: mejor un nombre
+feo que un formulario que se come campos en silencio.
+
+### Los catálogos se transcribieron de formularios rellenos
+
+51 campos en la visita previa (24 fotos) y 56 en el acta (48 fotos). Salieron de
+los dos PDF de referencia, que estaban **rellenos, no en blanco**: de la visita
+previa solo era visible la rama «conectada a red», así que si existe un juego de
+campos para instalación aislada, falta. Queda anotado en el README.
+
+### Qué bloquea la firma depende del tipo
+
+El checklist exige sus 24 puntos: dejar uno sin mirar es dejar la visita a
+medias. En las otras dos plantillas solo bloquean los marcados obligatorios —hay
+campos que no aplican a una obra concreta, como la marca de la batería cuando no
+lleva batería, y exigirlos todos obligaría al técnico a rellenar basura para
+poder cerrar.
+
+La regla vive en un solo sitio porque **el servidor tiene que aplicar la misma al
+firmar**: si solo la comprobara el navegador, no la comprobaría nadie.
+
+---
+
+## 2026-08-30 — Auditoría completa: lo que encontró y lo que se cambió
+
+Se pasaron los cuatro pases de la familia de skills —Explorador, Fontanero,
+Auditor y Council— sobre el repositorio entero. Lo que sigue son las decisiones
+que salieron de ahí.
+
+### El acta de obra se emitía titulada «Acta de mantenimiento»
+
+El hallazgo más grave, y no era de seguridad. El generador tenía **cuatro
+literales fijos**: el título del documento, el subtítulo, el encabezado de
+sección y el pie de página, que se repite en todas las hojas. Las tres
+plantillas pasaban por ahí.
+
+Es el papel que firma el cliente. Un acta de finalización de obra que se
+presenta a sí misma como acta de mantenimiento describe mal lo que se firmó.
+Ahora los cuatro textos vienen de `TEXTOS_DOCUMENTO`, junto al resto del
+registro de plantillas.
+
+**Comprobado renderizando de verdad**, no compilando: un acta con 96 fotos en
+los 8 bloques da 10 páginas, con las 96 colocadas y los 56 campos presentes.
+Para renderizar fuera de Next hay que empaquetar con esbuild en formato ESM —
+`@react-pdf/hyphenate` solo declara la condición `import` en sus *exports*, y
+`tsx` lo convierte a `require`.
+
+### Dos comprobaciones que contaban en vez de verificar
+
+El Council lo identificó como **un mismo error de diseño repetido**, y es la
+lección más útil de toda la auditoría: cada vez que hizo falta saber si algo
+estaba aplicado, se contó en lugar de comparar. Las dos fallaban en silencio
+diciendo que todo iba bien.
+
+**RLS se saltaba entero si ya existía alguna política.** Un cambio en `rls.sql`
+no llegaba nunca a un servidor ya desplegado. Ahora se compara el hash del
+contenido, y para que reaplicar sea seguro `rls.sql` pasa a ser idempotente:
+cada una de sus 15 políticas lleva delante su `DROP ... IF EXISTS`.
+
+Quedó demostrado el mismo día: al aplicar la política nueva de clientes, el
+número de políticas **siguió siendo 15 antes y después**. La comprobación vieja
+no lo habría detectado jamás.
+
+**El registro de migraciones daba por aplicada solo la primera.** Ante una base
+con esquema y registro vacío, las intermedias quedaban pendientes y fallaban al
+reintentarlas. Es lo que pasó con la `0004` y obligó a un `insert` a mano.
+
+El script no puede saber hasta dónde llegó un esquema existente, así que **ya no
+lo adivina**: para, lista las migraciones y pide que se le diga cuál es la
+última aplicada. Parar es peor experiencia que adivinar, y mucho mejor que
+adivinar mal contra una base con datos.
+
+### La cartera de clientes estaba abierta a cualquier técnico
+
+`GET /api/clientes` solo comprobaba que hubiera sesión, y la política
+`clientes_tecnico_read` dejaba leer la tabla entera. Una sola petición devolvía
+nombre, DNI, dirección, teléfono, email y CUPS de todos.
+
+Decisión del cliente, sin matices: **una cartera de quién tiene placas
+instaladas es el activo del negocio**, y no hay motivo para que quepa entera en
+la sesión de alguien que va a hacer una visita concreta.
+
+Se cerró por dos sitios, que **no son dos capas de lo mismo sino dos agujeros
+distintos**: una guarda de rol en la ruta, que impide listarlas de golpe, y la
+política `clientes_tecnico_asignados`, que es la que cierra también la ficha
+individual por `/api/clientes/[id]`. Quien aplicara solo la primera se quedaría
+tranquilo sin motivo.
+
+Los datos que el técnico necesita le siguen llegando dentro de su visita.
+
+### El login no tenía límite de intentos, y el reloj delataba los emails
+
+Única ruta accesible sin sesión. Sin límite se podían probar contraseñas
+indefinidamente, y bcrypt con coste 12 la convertía además en un amplificador de
+carga que cualquiera podía activar sin autenticarse. Ahora 8 intentos por
+ventana de 15 minutos, por email **y** por IP.
+
+El mensaje de error ya no distinguía entre email inexistente y contraseña mala,
+pero el tiempo sí: sin usuario no se llamaba a bcrypt y la respuesta llegaba
+~250 ms antes. Ahora se verifica contra un hash señuelo. Medido: 405 ms frente a
+399 ms.
+
+### El permiso de columna, donde el `GRANT` no lo deshaga
+
+`mantsolar_app` podía leer `password_hash`. No se filtraba nada porque las cinco
+consultas piden columnas explícitas, pero el día que alguien escriba `select()`
+sobre esa tabla los hashes salen al navegador. Ya pasó una vez, con el login.
+
+El `REVOKE` va en `aplicar-esquema.mjs`, justo detrás del `GRANT ... ON ALL
+TABLES`, y no en `rls.sql`. **Ese GRANT se ejecuta en cada despliegue**, así que
+un `REVOKE` en cualquier otro sitio se desharía solo en el siguiente.
+
+### Cabeceras sí, CSP no todavía
+
+Se añadieron `X-Frame-Options`, `nosniff`, `Referrer-Policy`,
+`Permissions-Policy` y HSTS. `camera=(self)` es obligatorio: el técnico hace las
+fotos desde el navegador.
+
+**Sin CSP a propósito.** La app inyecta un script en línea para que el tema no
+parpadee al cargar, y una CSP sin la excepción correcta lo bloquearía sin dar
+ningún error. Merece su propio paso.
+
+### Esconder un botón no es una guarda
+
+Al quitar «Clientes» del menú del técnico quedaba la puerta abierta: escribiendo
+la dirección a mano llegaba a la pantalla y veía la barra de «Importar» y
+«Nuevo cliente» sobre un aviso de permiso denegado. No se filtraba nada, pero
+era una pantalla rota.
+
+Ahora hay guarda en el servidor para `/clientes`, `/clientes/nuevo` y
+`/clientes/importar`. **`/clientes/[id]` se queda accesible a propósito**: ahí
+quien decide es RLS, no el rol, y es como el técnico abre la ficha desde su
+visita.
+
+### El seguimiento de contacto estaba a medias, y era vital
+
+`contactado`, `fecha_contacto` y `via_whatsapp` existían en la tabla, la API las
+aceptaba y **ninguna pantalla las enviaba ni las mostraba**. `contactado`
+aparecía en dos archivos y en los dos era solo una línea declarando el tipo.
+
+El cliente lo señaló como vital, y con razón: llega el mes de la visita, alguien
+de oficina llama para cuadrar el día, y eso hay que apuntarlo. Sin ello a la
+semana siguiente nadie sabe a quién se avisó — o se llama dos veces o no se
+llama, y el técnico se planta en una casa donde no le esperan, a veces después
+de coger un barco.
+
+Se terminó: bloque de aviso en la visita y filtro **«Sin avisar»** en la lista,
+que es la cola de trabajo de la oficina. La fecha se toma en hora local, no con
+`toISOString()`: Canarias va por delante de UTC en verano y entre medianoche y la
+una se guardaría un día de menos.
+
+### Lo que la auditoría descartó, que también es información
+
+- **El import de Excel resiste el peor escenario.** `conSesionRLS` lo envuelve
+  en una transacción, así que un fallo a mitad deshace las inserciones enteras.
+  Los duplicados dentro del archivo se rechazan antes de escribir.
+- **La interpolación en `SET LOCAL` no es explotable.** Las validaciones previas
+  están ancladas y los datos vienen de un JWT firmado. Es la decisión correcta,
+  porque `SET LOCAL` no admite parámetros preparados.
+- **Las 6 vulnerabilidades de dependencias son inalcanzables.** `uuid` afecta a
+  v3, v5 y v6 con búfer; `exceljs` solo usa `v4`, sin búfer. La cadena
+  `esbuild → drizzle-kit` es de desarrollo. Ninguna justifica el `--force` que
+  propone npm, que degradaría las dos librerías.
+- **No hay secretos en el historial de git.** Revisados todos los commits.

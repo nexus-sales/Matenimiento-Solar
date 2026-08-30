@@ -105,6 +105,10 @@ export async function POST(
       .set({
         anulada: true,
         anuladaEn: new Date(),
+        // PENDIENTE DE UI: anuladaPor y sustituidaPor se guardan y no los
+        // lee ninguna pantalla ni el PDF. El rastro existe en la base y
+        // nadie puede verlo, que es justo lo que hacia util la anulacion.
+        // Anotado en "Que falta" del README.
         anuladaPor: sesion.id,
         motivoAnulacion: motivo,
         sustituidaPor: nueva?.id ?? null,

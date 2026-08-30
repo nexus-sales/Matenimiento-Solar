@@ -77,5 +77,4 @@ export function incidenciaNecesitaObservacion(
 }
 
 export const esquemaEstadoPunto = z.enum(ESTADOS_PUNTO);
-export const esquemaCategoria = z.enum(CATEGORIAS);
 export const esquemaTipoVisita = z.enum(TIPOS_VISITA);

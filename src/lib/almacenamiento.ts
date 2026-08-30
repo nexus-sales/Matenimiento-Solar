@@ -79,12 +79,12 @@ const BUCKET = () => process.env.S3_BUCKET!;
  * fotos subidas a la vez se pisen.
  */
 export function claveFoto(
-  mantenimientoId: string,
+  intervencionId: string,
   itemId: string,
   extension: string
 ): string {
   const aleatorio = crypto.randomUUID();
-  return `visitas/${mantenimientoId}/${itemId}/${aleatorio}.${extension}`;
+  return `visitas/${intervencionId}/${itemId}/${aleatorio}.${extension}`;
 }
 
 export function extensionDe(tipo: string): string {

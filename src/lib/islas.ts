@@ -61,7 +61,7 @@ export function prefijoCodigoPostal(isla: string | null | undefined) {
  * Comprueba que el código postal case con la isla elegida. Devuelve null si
  * todo cuadra, o el motivo si no: un 38xxx en Lanzarote es casi siempre un
  * error de tecleo, y es más barato avisarlo en el alta que perseguirlo
- * después en el histórico de mantenimientos.
+ * después en el histórico de intervenciones.
  */
 export function desajusteCodigoPostal(
   codigoPostal: string | null | undefined,

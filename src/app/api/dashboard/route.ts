@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { conSesionRLS } from "@/db";
-import { clientes, mantenimientos, usuarios } from "@/db/schema";
+import { clientes, intervenciones, usuarios } from "@/db/schema";
 import { and, count, eq, gte, isNull, lt, lte } from "drizzle-orm";
 import { obtenerSesion } from "@/lib/auth";
 
@@ -49,26 +49,26 @@ export async function GET() {
 
     const [pendientes] = await tx
       .select({ n: count() })
-      .from(mantenimientos)
-      .where(isNull(mantenimientos.fechaEjecucion));
+      .from(intervenciones)
+      .where(isNull(intervenciones.fechaEjecucion));
 
     const [vencidos] = await tx
       .select({ n: count() })
-      .from(mantenimientos)
+      .from(intervenciones)
       .where(
         and(
-          isNull(mantenimientos.fechaEjecucion),
-          lt(mantenimientos.fechaPrevista, hoy)
+          isNull(intervenciones.fechaEjecucion),
+          lt(intervenciones.fechaPrevista, hoy)
         )
       );
 
     const [completadosEsteMes] = await tx
       .select({ n: count() })
-      .from(mantenimientos)
+      .from(intervenciones)
       .where(
         and(
-          gte(mantenimientos.fechaEjecucion, inicioDeMes),
-          lte(mantenimientos.fechaEjecucion, hoy)
+          gte(intervenciones.fechaEjecucion, inicioDeMes),
+          lte(intervenciones.fechaEjecucion, hoy)
         )
       );
 
@@ -79,22 +79,22 @@ export async function GET() {
 
     const [sinTecnicoAsignado] = await tx
       .select({ n: count() })
-      .from(mantenimientos)
+      .from(intervenciones)
       .where(
         and(
-          isNull(mantenimientos.fechaEjecucion),
-          isNull(mantenimientos.tecnicoId)
+          isNull(intervenciones.fechaEjecucion),
+          isNull(intervenciones.tecnicoId)
         )
       );
 
     const [previstosTreintaDias] = await tx
       .select({ n: count() })
-      .from(mantenimientos)
+      .from(intervenciones)
       .where(
         and(
-          isNull(mantenimientos.fechaEjecucion),
-          gte(mantenimientos.fechaPrevista, hoy),
-          lte(mantenimientos.fechaPrevista, dentroDeTreintaDias)
+          isNull(intervenciones.fechaEjecucion),
+          gte(intervenciones.fechaPrevista, hoy),
+          lte(intervenciones.fechaPrevista, dentroDeTreintaDias)
         )
       );
 

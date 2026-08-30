@@ -52,9 +52,12 @@ export const NOMBRE_TIPO_VISITA: Record<TipoVisita, string> = {
  * no una vez en la visita de junio.
  */
 export function itemAplicaAVisita(
-  periodicidadMeses: number,
+  periodicidadMeses: number | null,
   tipo: TipoVisita
 ): boolean {
+  // Sin periodicidad no es un punto de checklist —es un campo de otra
+  // plantilla— y entonces la pregunta no aplica: se incluye siempre.
+  if (periodicidadMeses === null) return true;
   return tipo === "anual" || periodicidadMeses <= 6;
 }
 

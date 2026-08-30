@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { conSesionRLS } from "@/db";
-import { clientes, mantenimientos, usuarios } from "@/db/schema";
+import { clientes, intervenciones, usuarios } from "@/db/schema";
 import { and, asc, eq, isNotNull, isNull, lt } from "drizzle-orm";
 import { obtenerSesion } from "@/lib/auth";
 import { exigirRolEscritura } from "@/lib/permisos";
@@ -27,26 +27,26 @@ export async function GET(req: NextRequest) {
 
   const condicion =
     estado === "pendientes"
-      ? isNull(mantenimientos.fechaEjecucion)
+      ? isNull(intervenciones.fechaEjecucion)
       : estado === "vencidos"
         ? and(
-            isNull(mantenimientos.fechaEjecucion),
-            lt(mantenimientos.fechaPrevista, hoy)
+            isNull(intervenciones.fechaEjecucion),
+            lt(intervenciones.fechaPrevista, hoy)
           )
         : estado === "completados"
-          ? isNotNull(mantenimientos.fechaEjecucion)
+          ? isNotNull(intervenciones.fechaEjecucion)
           : undefined;
 
   const resultado = await conSesionRLS(sesion, (tx) =>
     tx
       .select({
-        id: mantenimientos.id,
-        fechaPrevista: mantenimientos.fechaPrevista,
-        fechaEjecucion: mantenimientos.fechaEjecucion,
-        contactado: mantenimientos.contactado,
-        firmado: mantenimientos.firmado,
-        anulada: mantenimientos.anulada,
-        tipo: mantenimientos.tipo,
+        id: intervenciones.id,
+        fechaPrevista: intervenciones.fechaPrevista,
+        fechaEjecucion: intervenciones.fechaEjecucion,
+        contactado: intervenciones.contactado,
+        firmado: intervenciones.firmado,
+        anulada: intervenciones.anulada,
+        tipo: intervenciones.tipo,
         cups: clientes.cups,
         isla: clientes.isla,
         direccion: clientes.direccion,
@@ -55,11 +55,11 @@ export async function GET(req: NextRequest) {
         tecnicoId: usuarios.id,
         tecnicoNombre: usuarios.nombre,
       })
-      .from(mantenimientos)
-      .innerJoin(clientes, eq(mantenimientos.clienteId, clientes.id))
-      .leftJoin(usuarios, eq(mantenimientos.tecnicoId, usuarios.id))
+      .from(intervenciones)
+      .innerJoin(clientes, eq(intervenciones.clienteId, clientes.id))
+      .leftJoin(usuarios, eq(intervenciones.tecnicoId, usuarios.id))
       .where(condicion)
-      .orderBy(asc(mantenimientos.fechaPrevista))
+      .orderBy(asc(intervenciones.fechaPrevista))
   );
 
   return NextResponse.json(resultado);
@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
     }
 
     const [creada] = await tx
-      .insert(mantenimientos)
+      .insert(intervenciones)
       .values({
         clienteId: datos.clienteId,
         tipo: datos.tipo,

@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { conSesionRLS } from "@/db";
 import {
-  checklistItemDefinicion,
+  plantillaCampo,
   clientes,
-  mantenimientoChecklistRespuesta,
-  mantenimientoObservacionBloque,
-  mantenimientos,
+  respuestas,
+  observacionesBloque,
+  intervenciones,
   respuestaFoto,
   usuarios,
 } from "@/db/schema";
@@ -53,8 +53,8 @@ export async function GET(
   const datosCrudos = await conSesionRLS(sesion, async (tx) => {
     const [visita] = await tx
       .select()
-      .from(mantenimientos)
-      .where(eq(mantenimientos.id, id))
+      .from(intervenciones)
+      .where(eq(intervenciones.id, id))
       .limit(1);
     if (!visita) return null;
 
@@ -74,16 +74,16 @@ export async function GET(
 
     const items = await tx
       .select()
-      .from(checklistItemDefinicion)
-      .where(eq(checklistItemDefinicion.activo, true))
-      .orderBy(asc(checklistItemDefinicion.orden));
+      .from(plantillaCampo)
+      .where(eq(plantillaCampo.activo, true))
+      .orderBy(asc(plantillaCampo.orden));
 
-    const respuestas = await tx
+    const filasRespuesta = await tx
       .select()
-      .from(mantenimientoChecklistRespuesta)
-      .where(eq(mantenimientoChecklistRespuesta.mantenimientoId, id));
+      .from(respuestas)
+      .where(eq(respuestas.intervencionId, id));
 
-    const idsRespuesta = respuestas.map((r) => r.id);
+    const idsRespuesta = filasRespuesta.map((r) => r.id);
     const fotos = idsRespuesta.length
       ? await tx
           .select()
@@ -94,10 +94,10 @@ export async function GET(
 
     const observaciones = await tx
       .select()
-      .from(mantenimientoObservacionBloque)
-      .where(eq(mantenimientoObservacionBloque.mantenimientoId, id));
+      .from(observacionesBloque)
+      .where(eq(observacionesBloque.intervencionId, id));
 
-    return { visita, cliente, tecnico, items, respuestas, fotos, observaciones };
+    return { visita, cliente, tecnico, items, filasRespuesta, fotos, observaciones };
   });
 
   if (!datosCrudos) {
@@ -107,7 +107,7 @@ export async function GET(
     );
   }
 
-  const { visita, cliente, tecnico, items, respuestas, fotos, observaciones } =
+  const { visita, cliente, tecnico, items, filasRespuesta, fotos, observaciones } =
     datosCrudos;
 
   if (!visita.firmado) {
@@ -138,7 +138,7 @@ export async function GET(
 
   // --- componer los datos del documento ---
 
-  const porItem = new Map(respuestas.map((r) => [r.itemId, r]));
+  const porItem = new Map(filasRespuesta.map((r) => [r.campoId, r]));
   const fotosPorRespuesta = new Map<string, typeof fotos>();
   for (const f of fotos) {
     const lista = fotosPorRespuesta.get(f.respuestaId) ?? [];

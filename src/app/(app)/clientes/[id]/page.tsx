@@ -146,7 +146,7 @@ export default function ClienteDetallePage() {
   async function borrar() {
     if (
       !confirm(
-        "¿Borrar este cliente? Se borrará también su histórico de mantenimientos. Esta acción no se puede deshacer."
+        "¿Borrar este cliente? Se borrará también su histórico de intervenciones. Esta acción no se puede deshacer."
       )
     )
       return;

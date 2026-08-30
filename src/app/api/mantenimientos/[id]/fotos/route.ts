@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { conSesionRLS } from "@/db";
 import {
-  mantenimientoChecklistRespuesta,
-  mantenimientos,
+  respuestas,
+  intervenciones,
   respuestaFoto,
 } from "@/db/schema";
 import { and, eq, sql } from "drizzle-orm";
@@ -47,7 +47,7 @@ export async function POST(
     );
   }
 
-  const { id: mantenimientoId } = await params;
+  const { id: intervencionId } = await params;
 
   const formulario = await req.formData();
   const archivo = formulario.get("archivo");
@@ -77,16 +77,16 @@ export async function POST(
   }
 
   const bytes = Buffer.from(await archivo.arrayBuffer());
-  const clave = claveFoto(mantenimientoId, itemId, extensionDe(archivo.type));
+  const clave = claveFoto(intervencionId, itemId, extensionDe(archivo.type));
 
   // Primero la base, luego el archivo. Si el almacenamiento falla, se
   // deshace la transacción y no queda una fila apuntando a una foto que no
   // existe. Al revés dejaría archivos huérfanos que nadie sabría borrar.
   const resultado = await conSesionRLS(sesion, async (tx) => {
     const [visita] = await tx
-      .select({ firmado: mantenimientos.firmado })
-      .from(mantenimientos)
-      .where(eq(mantenimientos.id, mantenimientoId))
+      .select({ firmado: intervenciones.firmado })
+      .from(intervenciones)
+      .where(eq(intervenciones.id, intervencionId))
       .limit(1);
 
     if (!visita) return { error: "Visita no encontrada.", estado: 404 };
@@ -101,19 +101,19 @@ export async function POST(
     // foto antes de marcar el estado. Se crea en blanco para colgarla de ahí.
     let [respuesta] = await tx
       .select()
-      .from(mantenimientoChecklistRespuesta)
+      .from(respuestas)
       .where(
         and(
-          eq(mantenimientoChecklistRespuesta.mantenimientoId, mantenimientoId),
-          eq(mantenimientoChecklistRespuesta.itemId, itemId)
+          eq(respuestas.intervencionId, intervencionId),
+          eq(respuestas.campoId, itemId)
         )
       )
       .limit(1);
 
     if (!respuesta) {
       [respuesta] = await tx
-        .insert(mantenimientoChecklistRespuesta)
-        .values({ mantenimientoId, itemId })
+        .insert(respuestas)
+        .values({ intervencionId, campoId: itemId })
         .returning();
     }
 

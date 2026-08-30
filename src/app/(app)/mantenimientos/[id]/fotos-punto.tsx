@@ -15,13 +15,13 @@ export type Foto = { id: string; pie: string | null };
  * forma explicita sin perder la subida multiple desde galeria.
  */
 export function FotosPunto({
-  mantenimientoId,
+  intervencionId,
   itemId,
   fotos,
   bloqueado,
   onCambio,
 }: {
-  mantenimientoId: string;
+  intervencionId: string;
   itemId: string;
   fotos: Foto[];
   bloqueado: boolean;
@@ -60,7 +60,7 @@ export function FotosPunto({
 
       try {
         const res = await fetch(
-          `/api/mantenimientos/${mantenimientoId}/fotos`,
+          `/api/mantenimientos/${intervencionId}/fotos`,
           { method: "POST", body: cuerpo }
         );
 

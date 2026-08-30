@@ -3,10 +3,10 @@ import { z } from "zod";
 import { conSesionRLS } from "@/db";
 import {
   clientes,
-  mantenimientos,
-  mantenimientoChecklistRespuesta,
-  mantenimientoObservacionBloque,
-  checklistItemDefinicion,
+  intervenciones,
+  respuestas,
+  observacionesBloque,
+  plantillaCampo,
   respuestaFoto,
   usuarios,
 } from "@/db/schema";
@@ -30,8 +30,8 @@ export async function GET(
   const resultado = await conSesionRLS(sesion, async (tx) => {
     const [visita] = await tx
       .select()
-      .from(mantenimientos)
-      .where(eq(mantenimientos.id, id))
+      .from(intervenciones)
+      .where(eq(intervenciones.id, id))
       .limit(1);
 
     if (!visita) return null;
@@ -58,18 +58,18 @@ export async function GET(
 
     const itemsCatalogo = await tx
       .select()
-      .from(checklistItemDefinicion)
-      .where(eq(checklistItemDefinicion.activo, true))
-      .orderBy(asc(checklistItemDefinicion.orden));
+      .from(plantillaCampo)
+      .where(eq(plantillaCampo.activo, true))
+      .orderBy(asc(plantillaCampo.orden));
 
-    const respuestas = await tx
+    const filasRespuesta = await tx
       .select()
-      .from(mantenimientoChecklistRespuesta)
-      .where(eq(mantenimientoChecklistRespuesta.mantenimientoId, id));
+      .from(respuestas)
+      .where(eq(respuestas.intervencionId, id));
 
     // Las fotos se piden en una sola consulta para todas las respuestas,
     // no una por punto.
-    const idsRespuesta = respuestas.map((r) => r.id);
+    const idsRespuesta = filasRespuesta.map((r) => r.id);
     const fotos = idsRespuesta.length
       ? await tx
           .select()
@@ -85,12 +85,12 @@ export async function GET(
       fotosPorRespuesta.set(foto.respuestaId, lista);
     }
 
-    const respuestasPorItem = new Map(respuestas.map((r) => [r.itemId, r]));
+    const respuestasPorItem = new Map(filasRespuesta.map((r) => [r.campoId, r]));
 
     const observaciones = await tx
       .select()
-      .from(mantenimientoObservacionBloque)
-      .where(eq(mantenimientoObservacionBloque.mantenimientoId, id));
+      .from(observacionesBloque)
+      .where(eq(observacionesBloque.intervencionId, id));
 
     const checklist = itemsCatalogo
       // Una visita semestral no arrastra los puntos anuales: se filtran
@@ -201,9 +201,9 @@ export async function PUT(
 
   const resultado = await conSesionRLS(sesion, async (tx) => {
     const [visita] = await tx
-      .select({ firmado: mantenimientos.firmado })
-      .from(mantenimientos)
-      .where(eq(mantenimientos.id, id))
+      .select({ firmado: intervenciones.firmado })
+      .from(intervenciones)
+      .where(eq(intervenciones.id, id))
       .limit(1);
 
     if (!visita) return { error: "Visita no encontrada.", estado: 404 };
@@ -248,9 +248,9 @@ export async function PUT(
     }
 
     const [fila] = await tx
-      .update(mantenimientos)
+      .update(intervenciones)
       .set(cambios)
-      .where(eq(mantenimientos.id, id))
+      .where(eq(intervenciones.id, id))
       .returning();
 
     return { fila, facturaCambiada: "numeroFactura" in cambios };
@@ -292,7 +292,7 @@ export async function DELETE(
   const { id } = await params;
 
   const [borrada] = await conSesionRLS(sesion, (tx) =>
-    tx.delete(mantenimientos).where(eq(mantenimientos.id, id)).returning()
+    tx.delete(intervenciones).where(eq(intervenciones.id, id)).returning()
   );
 
   if (!borrada) {

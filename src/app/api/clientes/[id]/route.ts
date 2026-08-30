@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { conSesionRLS } from "@/db";
-import { clientes, mantenimientos, usuarios } from "@/db/schema";
+import { clientes, intervenciones, usuarios } from "@/db/schema";
 import { desc, eq } from "drizzle-orm";
 import { obtenerSesion } from "@/lib/auth";
 import { exigirRolEscritura } from "@/lib/permisos";
@@ -33,19 +33,19 @@ export async function GET(
 
     const historico = await tx
       .select({
-        id: mantenimientos.id,
-        fechaPrevista: mantenimientos.fechaPrevista,
-        fechaEjecucion: mantenimientos.fechaEjecucion,
-        contactado: mantenimientos.contactado,
-        firmado: mantenimientos.firmado,
-        anulada: mantenimientos.anulada,
-        comentariosGenerales: mantenimientos.comentariosGenerales,
+        id: intervenciones.id,
+        fechaPrevista: intervenciones.fechaPrevista,
+        fechaEjecucion: intervenciones.fechaEjecucion,
+        contactado: intervenciones.contactado,
+        firmado: intervenciones.firmado,
+        anulada: intervenciones.anulada,
+        comentariosGenerales: intervenciones.comentariosGenerales,
         tecnicoNombre: usuarios.nombre,
       })
-      .from(mantenimientos)
-      .leftJoin(usuarios, eq(mantenimientos.tecnicoId, usuarios.id))
-      .where(eq(mantenimientos.clienteId, id))
-      .orderBy(desc(mantenimientos.fechaPrevista));
+      .from(intervenciones)
+      .leftJoin(usuarios, eq(intervenciones.tecnicoId, usuarios.id))
+      .where(eq(intervenciones.clienteId, id))
+      .orderBy(desc(intervenciones.fechaPrevista));
 
     return { cliente, mantenimientos: historico };
   });

@@ -48,6 +48,24 @@ export const estadoPuntoEnum = pgEnum("estado_punto", [
  * mantenimiento; el informe de visita previa y el acta de fin de obra
  * entrarán como plantillas nuevas sin tocar las tablas ni migrar datos.
  */
+/**
+ * Que se le pide al tecnico en cada campo.
+ *
+ * `estado` es el del checklist de mantenimiento (correcto/incidencia/no
+ * aplica). El resto nacen de los formularios de obra: el acta es sobre todo
+ * `foto`, y la visita previa pide `medida` ("6.40 x 3.90"), `numero` (metros
+ * de canalizacion) y `lista` (tipo de cubierta).
+ */
+export const tipoCampoEnum = pgEnum("tipo_campo", [
+  "estado",
+  "foto",
+  "texto",
+  "numero",
+  "medida",
+  "si_no",
+  "lista",
+]);
+
 export const plantillaEnum = pgEnum("plantilla", [
   "mantenimiento",
   "visita_previa",
@@ -123,13 +141,21 @@ export const clientes = pgTable("clientes", {
   creadoEn: timestamp("creado_en").notNull().defaultNow(),
 });
 
-// ---------- Mantenimiento (una visita) ----------
-export const mantenimientos = pgTable("mantenimientos", {
+// ---------- Intervencion: un formulario relleno ----------
+//
+// Antes se llamaba `mantenimientos` y solo guardaba visitas. Ahora guarda
+// cualquiera de los tres formularios -mantenimiento, visita previa y acta de
+// finalizacion- porque comparten toda la maquinaria: cliente, tecnico, fotos,
+// firmas, inmutabilidad al firmar, PDF y politicas RLS. Duplicarla habria
+// obligado a arreglar cada fallo tres veces.
+export const intervenciones = pgTable("intervenciones", {
   id: uuid("id").defaultRandom().primaryKey(),
   clienteId: uuid("cliente_id")
     .notNull()
     .references(() => clientes.id, { onDelete: "cascade" }),
   tecnicoId: uuid("tecnico_id").references(() => usuarios.id),
+  plantilla: plantillaEnum("plantilla").notNull().default("mantenimiento"),
+  /** Solo para mantenimiento: decide que puntos del checklist tocan. */
   tipo: tipoVisitaEnum("tipo").notNull().default("anual"),
   fechaPrevista: date("fecha_prevista").notNull(),
   fechaEjecucion: date("fecha_ejecucion"), // null = pendiente
@@ -168,37 +194,67 @@ export const mantenimientos = pgTable("mantenimientos", {
   creadoEn: timestamp("creado_en").notNull().defaultNow(),
 });
 
-// ---------- Catálogo de puntos de checklist (editable) ----------
-export const checklistItemDefinicion = pgTable("checklist_item_definicion", {
+// ---------- Catalogo de campos de cada plantilla (editable) ----------
+//
+// Antes se llamaba `checklist_item_definicion` y solo describia puntos de
+// checklist. Ahora describe CAMPOS: el mantenimiento los tiene homogeneos
+// -todos se responden con un estado- pero el acta de obra es sobre todo un
+// protocolo fotografico (54 de sus 85 campos son "haz esta foto") y la visita
+// previa pide medidas, secciones de cable y metros.
+export const plantillaCampo = pgTable("plantilla_campo", {
   id: uuid("id").defaultRandom().primaryKey(),
   plantilla: plantillaEnum("plantilla").notNull().default("mantenimiento"),
   categoria: categoriaChecklistEnum("categoria").notNull(),
   nombre: text("nombre").notNull(),
-  periodicidadMeses: integer("periodicidad_meses").notNull(), // 6 o 12
+  tipo: tipoCampoEnum("tipo").notNull().default("estado"),
+
+  /** Solo para el checklist de mantenimiento: 6 o 12 meses. */
+  periodicidadMeses: integer("periodicidad_meses"),
+
+  /** El acta lo exige de forma explicita: "Obligatorio!". */
+  obligatorio: boolean("obligatorio").notNull().default(false),
+
+  /** Para numeros y medidas: mm2, metros, kW. Se muestra junto al valor. */
+  unidad: text("unidad"),
+
+  /** Opciones de un desplegable. */
+  opciones: text("opciones").array(),
+
+  /** Aclaracion bajo el campo, para lo que no cabe en el nombre. */
+  ayuda: text("ayuda"),
+
   orden: integer("orden").notNull().default(0),
   activo: boolean("activo").notNull().default(true),
 });
 
-// ---------- Respuesta de cada punto en una visita concreta ----------
-export const mantenimientoChecklistRespuesta = pgTable(
-  "mantenimiento_checklist_respuesta",
+// ---------- Respuesta a un campo en una intervencion concreta ----------
+export const respuestas = pgTable(
+  "respuestas",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    mantenimientoId: uuid("mantenimiento_id")
+    intervencionId: uuid("intervencion_id")
       .notNull()
-      .references(() => mantenimientos.id, { onDelete: "cascade" }),
-    itemId: uuid("item_id")
+      .references(() => intervenciones.id, { onDelete: "cascade" }),
+    campoId: uuid("campo_id")
       .notNull()
-      .references(() => checklistItemDefinicion.id),
+      .references(() => plantillaCampo.id),
+
+    /** Solo para campos de tipo `estado` (el checklist de mantenimiento). */
     estado: estadoPuntoEnum("estado").notNull().default("sin_revisar"),
+
+    /**
+     * Para todo lo demas. Se guarda como texto a proposito: una medida es
+     * "6.40 x 3.90" y una seccion "25mm2" - no son numeros, son lo que el
+     * tecnico escribio, y forzarlos a un tipo numerico perderia el dato.
+     */
+    valor: text("valor"),
+
     observacion: text("observacion"),
-    // Las fotos van en su propia tabla: en obra rara vez basta una sola
-    // (un detalle de cerca y el conjunto para situarlo).
   },
   (t) => ({
-    unicoPorVisita: uniqueIndex("unico_item_por_visita").on(
-      t.mantenimientoId,
-      t.itemId
+    unicoPorIntervencion: uniqueIndex("unico_campo_por_intervencion").on(
+      t.intervencionId,
+      t.campoId
     ),
   })
 );
@@ -211,9 +267,7 @@ export const respuestaFoto = pgTable("respuesta_foto", {
   id: uuid("id").defaultRandom().primaryKey(),
   respuestaId: uuid("respuesta_id")
     .notNull()
-    .references(() => mantenimientoChecklistRespuesta.id, {
-      onDelete: "cascade",
-    }),
+    .references(() => respuestas.id, { onDelete: "cascade" }),
   url: text("url").notNull(),
   pie: text("pie"),
   orden: integer("orden").notNull().default(0),
@@ -224,19 +278,19 @@ export const respuestaFoto = pgTable("respuesta_foto", {
 // El técnico puede comentar punto a punto, pero muchas veces lo que tiene
 // que decir es del bloque completo ("toda la estructura con óxido en la
 // cara sur"). Repetir esa nota en cinco puntos sería ruido en el informe.
-export const mantenimientoObservacionBloque = pgTable(
-  "mantenimiento_observacion_bloque",
+export const observacionesBloque = pgTable(
+  "observaciones_bloque",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    mantenimientoId: uuid("mantenimiento_id")
+    intervencionId: uuid("intervencion_id")
       .notNull()
-      .references(() => mantenimientos.id, { onDelete: "cascade" }),
+      .references(() => intervenciones.id, { onDelete: "cascade" }),
     categoria: categoriaChecklistEnum("categoria").notNull(),
     observacion: text("observacion"),
   },
   (t) => ({
-    unicoPorBloque: uniqueIndex("unico_bloque_por_visita").on(
-      t.mantenimientoId,
+    unicoPorBloque: uniqueIndex("unico_bloque_por_intervencion").on(
+      t.intervencionId,
       t.categoria
     ),
   })
@@ -244,53 +298,53 @@ export const mantenimientoObservacionBloque = pgTable(
 
 // ---------- Relaciones (para queries anidadas con Drizzle) ----------
 export const clientesRelations = relations(clientes, ({ many }) => ({
-  mantenimientos: many(mantenimientos),
+  intervenciones: many(intervenciones),
 }));
 
-export const mantenimientosRelations = relations(
-  mantenimientos,
+export const intervencionesRelations = relations(
+  intervenciones,
   ({ one, many }) => ({
     cliente: one(clientes, {
-      fields: [mantenimientos.clienteId],
+      fields: [intervenciones.clienteId],
       references: [clientes.id],
     }),
     tecnico: one(usuarios, {
-      fields: [mantenimientos.tecnicoId],
+      fields: [intervenciones.tecnicoId],
       references: [usuarios.id],
     }),
-    respuestas: many(mantenimientoChecklistRespuesta),
-    observacionesBloque: many(mantenimientoObservacionBloque),
+    respuestas: many(respuestas),
+    observacionesBloque: many(observacionesBloque),
   })
 );
 
 export const respuestaRelations = relations(
-  mantenimientoChecklistRespuesta,
+  respuestas,
   ({ one, many }) => ({
-    mantenimiento: one(mantenimientos, {
-      fields: [mantenimientoChecklistRespuesta.mantenimientoId],
-      references: [mantenimientos.id],
+    intervencion: one(intervenciones, {
+      fields: [respuestas.intervencionId],
+      references: [intervenciones.id],
     }),
-    item: one(checklistItemDefinicion, {
-      fields: [mantenimientoChecklistRespuesta.itemId],
-      references: [checklistItemDefinicion.id],
+    campo: one(plantillaCampo, {
+      fields: [respuestas.campoId],
+      references: [plantillaCampo.id],
     }),
     fotos: many(respuestaFoto),
   })
 );
 
 export const respuestaFotoRelations = relations(respuestaFoto, ({ one }) => ({
-  respuesta: one(mantenimientoChecklistRespuesta, {
+  respuesta: one(respuestas, {
     fields: [respuestaFoto.respuestaId],
-    references: [mantenimientoChecklistRespuesta.id],
+    references: [respuestas.id],
   }),
 }));
 
 export const observacionBloqueRelations = relations(
-  mantenimientoObservacionBloque,
+  observacionesBloque,
   ({ one }) => ({
-    mantenimiento: one(mantenimientos, {
-      fields: [mantenimientoObservacionBloque.mantenimientoId],
-      references: [mantenimientos.id],
+    intervencion: one(intervenciones, {
+      fields: [observacionesBloque.intervencionId],
+      references: [intervenciones.id],
     }),
   })
 );

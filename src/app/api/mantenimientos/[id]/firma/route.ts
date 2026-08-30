@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { conSesionRLS } from "@/db";
 import {
-  checklistItemDefinicion,
-  mantenimientoChecklistRespuesta,
-  mantenimientos,
+  plantillaCampo,
+  respuestas,
+  intervenciones,
 } from "@/db/schema";
 import { asc, eq } from "drizzle-orm";
 import { obtenerSesion } from "@/lib/auth";
@@ -72,8 +72,8 @@ export async function POST(
   const resultado = await conSesionRLS(sesion, async (tx) => {
     const [visita] = await tx
       .select()
-      .from(mantenimientos)
-      .where(eq(mantenimientos.id, id))
+      .from(intervenciones)
+      .where(eq(intervenciones.id, id))
       .limit(1);
 
     if (!visita) return { error: "Visita no encontrada.", estado: 404 };
@@ -85,20 +85,20 @@ export async function POST(
     // de verdad tocaban a esta visita, no contra los 24 del catálogo.
     const items = await tx
       .select()
-      .from(checklistItemDefinicion)
-      .where(eq(checklistItemDefinicion.activo, true))
-      .orderBy(asc(checklistItemDefinicion.orden));
+      .from(plantillaCampo)
+      .where(eq(plantillaCampo.activo, true))
+      .orderBy(asc(plantillaCampo.orden));
 
     const aplicables = items.filter((i) =>
       itemAplicaAVisita(i.periodicidadMeses, visita.tipo)
     );
 
-    const respuestas = await tx
+    const filasRespuesta = await tx
       .select()
-      .from(mantenimientoChecklistRespuesta)
-      .where(eq(mantenimientoChecklistRespuesta.mantenimientoId, id));
+      .from(respuestas)
+      .where(eq(respuestas.intervencionId, id));
 
-    const porItem = new Map(respuestas.map((r) => [r.itemId, r]));
+    const porItem = new Map(filasRespuesta.map((r) => [r.campoId, r]));
 
     const pendientes = aplicables.filter((i) => {
       const r = porItem.get(i.id);
@@ -128,7 +128,7 @@ export async function POST(
     }
 
     const [fila] = await tx
-      .update(mantenimientos)
+      .update(intervenciones)
       .set({
         fechaEjecucion: datos.fechaEjecucion,
         firmaTecnico: datos.tecnico.firma,
@@ -140,7 +140,7 @@ export async function POST(
         firmado: true,
         firmadoEn: new Date(),
       })
-      .where(eq(mantenimientos.id, id))
+      .where(eq(intervenciones.id, id))
       .returning();
 
     return { fila };

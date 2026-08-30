@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { checklistItemDefinicion, usuarios } from "./schema";
+import { plantillaCampo, usuarios } from "./schema";
 import { hashPassword } from "../lib/password";
 import { cargarEnvLocal } from "../lib/cargar-env";
 
@@ -42,7 +42,7 @@ const ITEMS: {
 
 async function seed() {
   console.log(`Sembrando ${ITEMS.length} puntos de checklist...`);
-  await dbSeed.insert(checklistItemDefinicion).values(ITEMS);
+  await dbSeed.insert(plantillaCampo).values(ITEMS);
   console.log("Listo.");
 
   const emailAdmin = process.env.SEED_ADMIN_EMAIL || "admin@sr-energia.local";

@@ -281,7 +281,7 @@ try {
   }
 
   const { rows: [c] } = await cliente.query(
-    "select count(*)::int n from checklist_item_definicion"
+    "select count(*)::int n from plantilla_campo"
   );
   if (c.n > 0) {
     aviso(`El catálogo ya tiene ${c.n} puntos — se omite`);
@@ -290,7 +290,7 @@ try {
   } else {
     for (const i of items) {
       await cliente.query(
-        `insert into checklist_item_definicion
+        `insert into plantilla_campo
            (categoria, nombre, periodicidad_meses, orden)
          values ($1, $2, $3, $4)`,
         [i.categoria, i.nombre, i.periodicidadMeses, i.orden]

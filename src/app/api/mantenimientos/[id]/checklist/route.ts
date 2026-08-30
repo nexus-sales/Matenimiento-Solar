@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { conSesionRLS } from "@/db";
 import {
-  mantenimientoChecklistRespuesta,
-  mantenimientoObservacionBloque,
-  mantenimientos,
+  respuestas,
+  observacionesBloque,
+  intervenciones,
 } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { obtenerSesion } from "@/lib/auth";
@@ -38,11 +38,11 @@ export async function PUT(
     return NextResponse.json({ error: "No autenticado." }, { status: 401 });
   }
 
-  const { id: mantenimientoId } = await params;
+  const { id: intervencionId } = await params;
   const body = await req.json();
 
   if ("categoria" in body) {
-    return guardarObservacionBloque(sesion, mantenimientoId, body);
+    return guardarObservacionBloque(sesion, intervencionId, body);
   }
 
   const parseo = esquemaRespuesta.safeParse(body);
@@ -69,9 +69,9 @@ export async function PUT(
     // Una visita ya firmada no se retoca: el informe firmado por el cliente
     // y lo que hay en la base tienen que decir lo mismo.
     const [visita] = await tx
-      .select({ firmado: mantenimientos.firmado })
-      .from(mantenimientos)
-      .where(eq(mantenimientos.id, mantenimientoId))
+      .select({ firmado: intervenciones.firmado })
+      .from(intervenciones)
+      .where(eq(intervenciones.id, intervencionId))
       .limit(1);
 
     if (!visita) return { error: "Visita no encontrada.", estado: 404 };
@@ -84,27 +84,27 @@ export async function PUT(
 
     const [existente] = await tx
       .select()
-      .from(mantenimientoChecklistRespuesta)
+      .from(respuestas)
       .where(
         and(
-          eq(mantenimientoChecklistRespuesta.mantenimientoId, mantenimientoId),
-          eq(mantenimientoChecklistRespuesta.itemId, itemId)
+          eq(respuestas.intervencionId, intervencionId),
+          eq(respuestas.campoId, itemId)
         )
       )
       .limit(1);
 
     if (existente) {
       const [fila] = await tx
-        .update(mantenimientoChecklistRespuesta)
+        .update(respuestas)
         .set({ estado, observacion: texto })
-        .where(eq(mantenimientoChecklistRespuesta.id, existente.id))
+        .where(eq(respuestas.id, existente.id))
         .returning();
       return { fila };
     }
 
     const [fila] = await tx
-      .insert(mantenimientoChecklistRespuesta)
-      .values({ mantenimientoId, itemId, estado, observacion: texto })
+      .insert(respuestas)
+      .values({ intervencionId, campoId: itemId, estado, observacion: texto })
       .returning();
     return { fila };
   });
@@ -121,7 +121,7 @@ export async function PUT(
 
 async function guardarObservacionBloque(
   sesion: { id: string; rol: "admin" | "oficina" | "tecnico" },
-  mantenimientoId: string,
+  intervencionId: string,
   body: unknown
 ) {
   const parseo = esquemaObservacionBloque.safeParse(body);
@@ -137,9 +137,9 @@ async function guardarObservacionBloque(
 
   const guardado = await conSesionRLS(sesion, async (tx) => {
     const [visita] = await tx
-      .select({ firmado: mantenimientos.firmado })
-      .from(mantenimientos)
-      .where(eq(mantenimientos.id, mantenimientoId))
+      .select({ firmado: intervenciones.firmado })
+      .from(intervenciones)
+      .where(eq(intervenciones.id, intervencionId))
       .limit(1);
 
     if (!visita) return { error: "Visita no encontrada.", estado: 404 };
@@ -152,27 +152,27 @@ async function guardarObservacionBloque(
 
     const [existente] = await tx
       .select()
-      .from(mantenimientoObservacionBloque)
+      .from(observacionesBloque)
       .where(
         and(
-          eq(mantenimientoObservacionBloque.mantenimientoId, mantenimientoId),
-          eq(mantenimientoObservacionBloque.categoria, categoria)
+          eq(observacionesBloque.intervencionId, intervencionId),
+          eq(observacionesBloque.categoria, categoria)
         )
       )
       .limit(1);
 
     if (existente) {
       const [fila] = await tx
-        .update(mantenimientoObservacionBloque)
+        .update(observacionesBloque)
         .set({ observacion: texto })
-        .where(eq(mantenimientoObservacionBloque.id, existente.id))
+        .where(eq(observacionesBloque.id, existente.id))
         .returning();
       return { fila };
     }
 
     const [fila] = await tx
-      .insert(mantenimientoObservacionBloque)
-      .values({ mantenimientoId, categoria, observacion: texto })
+      .insert(observacionesBloque)
+      .values({ intervencionId, categoria, observacion: texto })
       .returning();
     return { fila };
   });

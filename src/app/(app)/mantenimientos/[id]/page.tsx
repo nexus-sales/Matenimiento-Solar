@@ -552,7 +552,7 @@ export default function VisitaPage() {
                     )}
 
                     <FotosPunto
-                      mantenimientoId={id}
+                      intervencionId={id}
                       itemId={fila.item.id}
                       fotos={fila.fotos}
                       bloqueado={visita.firmado}

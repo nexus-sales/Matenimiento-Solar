@@ -207,7 +207,8 @@ export type DatosInforme = {
     observacion: string | null;
     puntos: {
       nombre: string;
-      periodicidadMeses: number;
+      /** Solo el checklist de mantenimiento la tiene. */
+      periodicidadMeses: number | null;
       estado: EstadoPunto;
       observacion: string | null;
       /** Imágenes ya descargadas, como data URI: react-pdf no va a la red. */
@@ -382,10 +383,12 @@ export function InformeMantenimiento({ datos }: { datos: DatosInforme }) {
                   <View style={e.puntoCabecera}>
                     <Text style={e.puntoNombre}>
                       {punto.nombre}
-                      <Text style={{ color: TENUE }}>
-                        {"  "}
-                        {punto.periodicidadMeses} meses
-                      </Text>
+                      {punto.periodicidadMeses !== null && (
+                        <Text style={{ color: TENUE }}>
+                          {"  "}
+                          {punto.periodicidadMeses} meses
+                        </Text>
+                      )}
                     </Text>
                     <Text
                       style={[

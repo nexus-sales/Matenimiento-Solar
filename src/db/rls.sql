@@ -1,4 +1,11 @@
 -- Row Level Security
+--
+-- NOTA sobre los nombres de las políticas: varias siguen llamándose
+-- `mantenimientos_*` y `checklist_item_*` aunque sus tablas se llamen ahora
+-- `intervenciones` y `plantilla_campo`. Es deliberado: esas políticas ya
+-- existen con ese nombre en producción, y renombrarlas aquí haría que una
+-- instalación nueva tuviera nombres distintos a los de producción — una
+-- divergencia que confunde más al depurar que un prefijo desactualizado.
 -- Se aplica DESPUÉS de que drizzle-kit haya creado las tablas (drizzle-kit no gestiona RLS).
 -- Ejecutar manualmente: psql $DATABASE_URL -f src/db/rls.sql
 
@@ -25,10 +32,10 @@
 
 ALTER TABLE usuarios ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clientes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE mantenimientos ENABLE ROW LEVEL SECURITY;
-ALTER TABLE checklist_item_definicion ENABLE ROW LEVEL SECURITY;
-ALTER TABLE mantenimiento_checklist_respuesta ENABLE ROW LEVEL SECURITY;
-ALTER TABLE mantenimiento_observacion_bloque ENABLE ROW LEVEL SECURITY;
+ALTER TABLE intervenciones ENABLE ROW LEVEL SECURITY;
+ALTER TABLE plantilla_campo ENABLE ROW LEVEL SECURITY;
+ALTER TABLE respuestas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE observaciones_bloque ENABLE ROW LEVEL SECURITY;
 ALTER TABLE respuesta_foto ENABLE ROW LEVEL SECURITY;
 
 -- Usuarios: todo el mundo autenticado puede leer (para ver nombres de técnico asignado, etc.)
@@ -58,12 +65,12 @@ CREATE POLICY clientes_tecnico_read ON clientes
 
 -- Mantenimientos: admin/oficina ven y gestionan todo.
 -- Técnico solo ve y edita las visitas que tiene asignadas a él.
-CREATE POLICY mantenimientos_oficina_admin_all ON mantenimientos
+CREATE POLICY mantenimientos_oficina_admin_all ON intervenciones
   FOR ALL
   USING (current_setting('app.current_user_rol', true) IN ('admin', 'oficina'))
   WITH CHECK (current_setting('app.current_user_rol', true) IN ('admin', 'oficina'));
 
-CREATE POLICY mantenimientos_tecnico_propio ON mantenimientos
+CREATE POLICY mantenimientos_tecnico_propio ON intervenciones
   FOR ALL
   USING (
     current_setting('app.current_user_rol', true) = 'tecnico'
@@ -75,40 +82,40 @@ CREATE POLICY mantenimientos_tecnico_propio ON mantenimientos
   );
 
 -- Catálogo de checklist: todos leen, solo admin edita (fijo + editable, como se acordó).
-CREATE POLICY checklist_item_select ON checklist_item_definicion
+CREATE POLICY checklist_item_select ON plantilla_campo
   FOR SELECT
   USING (current_setting('app.current_user_id', true) IS NOT NULL);
 
-CREATE POLICY checklist_item_admin_write ON checklist_item_definicion
+CREATE POLICY checklist_item_admin_write ON plantilla_campo
   FOR INSERT
   WITH CHECK (current_setting('app.current_user_rol', true) = 'admin');
 
-CREATE POLICY checklist_item_admin_update ON checklist_item_definicion
+CREATE POLICY checklist_item_admin_update ON plantilla_campo
   FOR UPDATE
   USING (current_setting('app.current_user_rol', true) = 'admin')
   WITH CHECK (current_setting('app.current_user_rol', true) = 'admin');
 
 -- Respuestas de checklist: siguen la misma regla que su mantenimiento padre.
-CREATE POLICY respuesta_oficina_admin_all ON mantenimiento_checklist_respuesta
+CREATE POLICY respuesta_oficina_admin_all ON respuestas
   FOR ALL
   USING (current_setting('app.current_user_rol', true) IN ('admin', 'oficina'))
   WITH CHECK (current_setting('app.current_user_rol', true) IN ('admin', 'oficina'));
 
-CREATE POLICY respuesta_tecnico_propio ON mantenimiento_checklist_respuesta
+CREATE POLICY respuesta_tecnico_propio ON respuestas
   FOR ALL
   USING (
     current_setting('app.current_user_rol', true) = 'tecnico'
     AND EXISTS (
-      SELECT 1 FROM mantenimientos m
-      WHERE m.id = mantenimiento_checklist_respuesta.mantenimiento_id
+      SELECT 1 FROM intervenciones m
+      WHERE m.id = respuestas.intervencion_id
         AND m.tecnico_id::text = current_setting('app.current_user_id', true)
     )
   )
   WITH CHECK (
     current_setting('app.current_user_rol', true) = 'tecnico'
     AND EXISTS (
-      SELECT 1 FROM mantenimientos m
-      WHERE m.id = mantenimiento_checklist_respuesta.mantenimiento_id
+      SELECT 1 FROM intervenciones m
+      WHERE m.id = respuestas.intervencion_id
         AND m.tecnico_id::text = current_setting('app.current_user_id', true)
     )
   );
@@ -116,26 +123,26 @@ CREATE POLICY respuesta_tecnico_propio ON mantenimiento_checklist_respuesta
 -- Observaciones de bloque y fotos: siguen la misma regla que la visita a la
 -- que pertenecen. Sin esto quedarían legibles para cualquier técnico, que
 -- es justo lo que las políticas de arriba evitan para el resto de la visita.
-CREATE POLICY observacion_bloque_oficina_admin_all ON mantenimiento_observacion_bloque
+CREATE POLICY observacion_bloque_oficina_admin_all ON observaciones_bloque
   FOR ALL
   USING (current_setting('app.current_user_rol', true) IN ('admin', 'oficina'))
   WITH CHECK (current_setting('app.current_user_rol', true) IN ('admin', 'oficina'));
 
-CREATE POLICY observacion_bloque_tecnico_propio ON mantenimiento_observacion_bloque
+CREATE POLICY observacion_bloque_tecnico_propio ON observaciones_bloque
   FOR ALL
   USING (
     current_setting('app.current_user_rol', true) = 'tecnico'
     AND EXISTS (
-      SELECT 1 FROM mantenimientos m
-      WHERE m.id = mantenimiento_observacion_bloque.mantenimiento_id
+      SELECT 1 FROM intervenciones m
+      WHERE m.id = observaciones_bloque.intervencion_id
         AND m.tecnico_id::text = current_setting('app.current_user_id', true)
     )
   )
   WITH CHECK (
     current_setting('app.current_user_rol', true) = 'tecnico'
     AND EXISTS (
-      SELECT 1 FROM mantenimientos m
-      WHERE m.id = mantenimiento_observacion_bloque.mantenimiento_id
+      SELECT 1 FROM intervenciones m
+      WHERE m.id = observaciones_bloque.intervencion_id
         AND m.tecnico_id::text = current_setting('app.current_user_id', true)
     )
   );
@@ -151,8 +158,8 @@ CREATE POLICY foto_tecnico_propio ON respuesta_foto
     current_setting('app.current_user_rol', true) = 'tecnico'
     AND EXISTS (
       SELECT 1
-      FROM mantenimiento_checklist_respuesta r
-      JOIN mantenimientos m ON m.id = r.mantenimiento_id
+      FROM respuestas r
+      JOIN intervenciones m ON m.id = r.intervencion_id
       WHERE r.id = respuesta_foto.respuesta_id
         AND m.tecnico_id::text = current_setting('app.current_user_id', true)
     )
@@ -161,8 +168,8 @@ CREATE POLICY foto_tecnico_propio ON respuesta_foto
     current_setting('app.current_user_rol', true) = 'tecnico'
     AND EXISTS (
       SELECT 1
-      FROM mantenimiento_checklist_respuesta r
-      JOIN mantenimientos m ON m.id = r.mantenimiento_id
+      FROM respuestas r
+      JOIN intervenciones m ON m.id = r.intervencion_id
       WHERE r.id = respuesta_foto.respuesta_id
         AND m.tecnico_id::text = current_setting('app.current_user_id', true)
     )

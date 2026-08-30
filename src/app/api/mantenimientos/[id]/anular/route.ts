@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { conSesionRLS } from "@/db";
-import { mantenimientos } from "@/db/schema";
+import { intervenciones } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { obtenerSesion } from "@/lib/auth";
 import { exigirAdmin } from "@/lib/permisos";
@@ -62,8 +62,8 @@ export async function POST(
   const resultado = await conSesionRLS(sesion, async (tx) => {
     const [visita] = await tx
       .select()
-      .from(mantenimientos)
-      .where(eq(mantenimientos.id, id))
+      .from(intervenciones)
+      .where(eq(intervenciones.id, id))
       .limit(1);
 
     if (!visita) return { error: "Visita no encontrada.", estado: 404 };
@@ -90,7 +90,7 @@ export async function POST(
         `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-${String(hoy.getDate()).padStart(2, "0")}`;
 
       [nueva] = await tx
-        .insert(mantenimientos)
+        .insert(intervenciones)
         .values({
           clienteId: visita.clienteId,
           tecnicoId: visita.tecnicoId,
@@ -101,7 +101,7 @@ export async function POST(
     }
 
     const [anulada] = await tx
-      .update(mantenimientos)
+      .update(intervenciones)
       .set({
         anulada: true,
         anuladaEn: new Date(),
@@ -109,7 +109,7 @@ export async function POST(
         motivoAnulacion: motivo,
         sustituidaPor: nueva?.id ?? null,
       })
-      .where(eq(mantenimientos.id, id))
+      .where(eq(intervenciones.id, id))
       .returning();
 
     return { anulada, nueva };

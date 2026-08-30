@@ -29,6 +29,13 @@
       "when": 1787944727233,
       "tag": "0003_anulacion_visita",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788075607550,
+      "tag": "0004_generalizar_plantillas",
+      "breakpoints": true
     }
   ]
 }

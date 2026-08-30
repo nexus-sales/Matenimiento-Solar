@@ -12,7 +12,7 @@ import {
   type Plantilla,
 } from "@/lib/plantillas";
 import { Firma } from "./panel-firma";
-import { CampoRespuesta, type FilaCampo } from "./campo";
+import { CampoRespuesta, campoRespondido, type FilaCampo } from "./campo";
 
 // La forma de un campo y su respuesta vive en ./campo, que es quien los
 // pinta. Aquí solo se manejan como filas.
@@ -331,10 +331,18 @@ export default function VisitaPage() {
     );
   }
 
-  // "Respondido" depende del tipo: un campo de foto se responde subiendo
-  // una foto, no marcando un estado.
-  const revisados = checklist.filter(
-    (f) => !campoPendiente(f.item, f.respuesta, f.fotos.length)
+  // Dos cuentas distintas, que antes se mostraban como una sola.
+  //
+  // RESPONDIDOS es cuántos campos tienen respuesta de verdad. Depende del
+  // tipo: uno de foto se responde subiendo una foto, no marcando un estado.
+  //
+  // BLOQUEAN es cuántos impiden firmar. En el checklist de mantenimiento son
+  // los mismos, porque todos sus puntos son obligatorios. En el acta no: solo
+  // 25 de sus 56 campos bloquean, así que contar "lo que no bloquea" como
+  // hecho mostraba un acta en blanco al 55 %.
+  const respondidos = checklist.filter(campoRespondido).length;
+  const bloquean = checklist.filter((f) =>
+    campoPendiente(f.item, f.respuesta, f.fotos.length)
   ).length;
   const incidencias = checklist.filter(
     (f) => f.respuesta?.estado === "incidencia"
@@ -347,9 +355,7 @@ export default function VisitaPage() {
   ).length;
 
   const completo =
-    revisados === checklist.length &&
-    checklist.length > 0 &&
-    incidenciasSinExplicar === 0;
+    bloquean === 0 && checklist.length > 0 && incidenciasSinExplicar === 0;
 
   const bloques = bloquesDe(
     visita.plantilla,
@@ -463,8 +469,13 @@ export default function VisitaPage() {
 
       <div className="mb-4 flex flex-wrap items-center gap-3 text-sm">
         <span className="text-suave">
-          {revisados} de {checklist.length} campos completados
+          {respondidos} de {checklist.length} campos respondidos
         </span>
+        {bloquean > 0 && (
+          <span className="text-aviso-contraste">
+            {bloquean} obligatorio{bloquean === 1 ? "" : "s"} sin completar
+          </span>
+        )}
         {incidencias > 0 && (
           <span className="rounded-full bg-peligro-suave px-2 py-0.5 text-xs text-peligro-contraste">
             {incidencias} incidencia{incidencias === 1 ? "" : "s"}
@@ -696,8 +707,8 @@ export default function VisitaPage() {
 
           {!completo && (
             <p className="mb-4 rounded-md border border-borde bg-superficie-alt p-3 text-sm text-suave">
-              {revisados < checklist.length
-                ? `Faltan ${checklist.length - revisados} punto(s) por revisar antes de poder firmar.`
+              {bloquean > 0
+                ? `Faltan ${bloquean} campo(s) obligatorio(s) por completar antes de poder firmar.`
                 : `Hay ${incidenciasSinExplicar} incidencia(s) sin explicar. Añade la observación antes de firmar.`}
             </p>
           )}

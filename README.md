@@ -643,22 +643,19 @@ temas.
    (`anulada_por`) y con qué acta se sustituyó (`sustituida_por`), pero no hay
    pantalla que lo enseñe. El rastro existe en la base y nadie puede verlo, que
    es justo lo que hacía útil la función.
-3. **Terminar o quitar el seguimiento de contacto.** `fecha_contacto` y
-   `via_whatsapp` se aceptan en la API y no los envía ni los muestra ninguna
-   pantalla; solo `contactado` está cableado de punta a punta.
-4. **Envío automático del acta.** Hoy el administrador la descarga y la manda
+3. **Envío automático del acta.** Hoy el administrador la descarga y la manda
    él junto con la factura, que es como quiere trabajar SR Energía. Si algún día
    se quiere automatizar, hará falta un servidor de correo.
-5. **Llevar la aplicación fuera de Canarias.** La isla es un tipo enumerado y
+4. **Llevar la aplicación fuera de Canarias.** La isla es un tipo enumerado y
    la provincia se deriva de ella, así que un cliente peninsular exigiría
    generalizar a «zona operativa». Es deuda consciente: el plan de migración
    está escrito en [`docs/decisiones.md`](docs/decisiones.md), y esperar no
    encarece el trabajo.
-6. **Una política de contenido (CSP).** Las demás cabeceras de seguridad están
+5. **Una política de contenido (CSP).** Las demás cabeceras de seguridad están
    puestas; la CSP se dejó fuera a propósito porque el script que evita el
    parpadeo del tema es en línea y una CSP mal medida lo bloquearía sin dar
    ningún error.
-7. **Rama de instalación aislada en la visita previa.** El formulario de
+6. **Rama de instalación aislada en la visita previa.** El formulario de
    referencia del que se transcribió estaba relleno con una instalación
    conectada a red, así que si existe un juego de campos distinto para las
    aisladas, falta.

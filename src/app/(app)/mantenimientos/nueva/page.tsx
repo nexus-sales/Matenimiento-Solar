@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
@@ -45,6 +45,7 @@ function FormularioNuevaVisita() {
   const [tecnicos, setTecnicos] = useState<Tecnico[]>([]);
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
+  const enviando = useRef(false);
   const [error, setError] = useState<string | null>(null);
 
   const [form, setForm] = useState({
@@ -100,6 +101,13 @@ function FormularioNuevaVisita() {
 
   async function crear(e: React.FormEvent) {
     e.preventDefault();
+
+    // El boton ya se desactiva con `guardando`, pero el estado no se aplica
+    // hasta que React repinta: dos toques muy seguidos en una tablet entran
+    // los dos. Una referencia se actualiza en el acto y no espera a nadie.
+    if (enviando.current) return;
+    enviando.current = true;
+
     setError(null);
     setGuardando(true);
 
@@ -118,9 +126,13 @@ function FormularioNuevaVisita() {
     setGuardando(false);
 
     if (!res.ok) {
+      enviando.current = false;
       setError(await leerErrorApi(res, "No se pudo programar la visita."));
       return;
     }
+
+    // No se libera al salir bien: se navega fuera y no debe poder reenviarse
+    // en el hueco entre la respuesta y el cambio de pantalla.
 
     const creada = await res.json();
     router.push(`/mantenimientos/${creada.id}`);

@@ -142,6 +142,30 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Doble toque en una tablet con mala cobertura: dos peticiones idénticas
+    // creaban dos visitas. En vez de rechazar la segunda con un error, se
+    // devuelve la que ya existe — el usuario acaba donde queria estar y no
+    // se entera de nada.
+    //
+    // Solo cuenta como repetida una sin firmar, del mismo cliente, plantilla
+    // y fecha prevista: programar dos veces lo mismo el mismo dia no es algo
+    // que nadie quiera hacer a proposito, y una firmada ya no se toca.
+    const [repetida] = await tx
+      .select()
+      .from(intervenciones)
+      .where(
+        and(
+          eq(intervenciones.clienteId, datos.clienteId),
+          eq(intervenciones.plantilla, datos.plantilla),
+          eq(intervenciones.fechaPrevista, datos.fechaPrevista),
+          eq(intervenciones.firmado, false),
+          eq(intervenciones.anulada, false)
+        )
+      )
+      .limit(1);
+
+    if (repetida) return { fila: repetida, yaExistia: true };
+
     const [creada] = await tx
       .insert(intervenciones)
       .values({
@@ -166,5 +190,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  return NextResponse.json(resultado.fila, { status: 201 });
+  return NextResponse.json(resultado.fila, {
+    status: "yaExistia" in resultado && resultado.yaExistia ? 200 : 201,
+  });
 }

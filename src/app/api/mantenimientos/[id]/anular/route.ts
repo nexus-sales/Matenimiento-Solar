@@ -94,6 +94,11 @@ export async function POST(
         .values({
           clienteId: visita.clienteId,
           tecnicoId: visita.tecnicoId,
+          // La plantilla se copia. Sin esto caía al valor por defecto y
+          // anular un acta de obra o una visita previa generaba un
+          // formulario de mantenimiento: el técnico se encontraba un
+          // checklist de 24 puntos donde esperaba su protocolo fotográfico.
+          plantilla: visita.plantilla,
           tipo: visita.tipo,
           fechaPrevista: fecha,
         })

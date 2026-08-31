@@ -15,6 +15,7 @@ import { obtenerSesion } from "@/lib/auth";
 import { exigirRolEscritura } from "@/lib/permisos";
 import { esquemaTipoVisita, itemAplicaAVisita } from "@/lib/checklist";
 import { ALMACENAMIENTO_CONFIGURADO, borrarFoto } from "@/lib/almacenamiento";
+import { borrarDelAlmacen, clavesDeAlmacenamiento } from "@/lib/borrado";
 
 export async function GET(
   _req: NextRequest,
@@ -198,10 +199,16 @@ export async function PUT(
   // Asignar técnico o mover la fecha es trabajo de oficina; el técnico solo
   // rellena su visita. RLS ya impide que toque las de otros, pero un
   // técnico no debe poder reasignarse las suyas.
+  //
+  // `numeroFactura` entra en esta lista aunque no lo parezca: facturar es
+  // trabajo de oficina, y es el ÚNICO campo que se puede tocar después de
+  // firmar. Sin esta guarda, un técnico asignado podía escribir el número de
+  // factura de un acta ya firmada, y ese número sale impreso en el PDF.
   const soloOficina =
     cambios.tecnicoId !== undefined ||
     cambios.tipo !== undefined ||
-    cambios.fechaPrevista !== undefined;
+    cambios.fechaPrevista !== undefined ||
+    cambios.numeroFactura !== undefined;
 
   if (soloOficina) {
     const denegado = exigirRolEscritura(sesion);
@@ -300,16 +307,47 @@ export async function DELETE(
 
   const { id } = await params;
 
-  const [borrada] = await conSesionRLS(sesion, (tx) =>
-    tx.delete(intervenciones).where(eq(intervenciones.id, id)).returning()
-  );
+  const resultado = await conSesionRLS(sesion, async (tx) => {
+    const [visita] = await tx
+      .select({ firmado: intervenciones.firmado })
+      .from(intervenciones)
+      .where(eq(intervenciones.id, id))
+      .limit(1);
 
-  if (!borrada) {
+    if (!visita) return { error: "Visita no encontrada.", estado: 404 as const };
+
+    // Una visita firmada NO se borra. El cliente firmó ese documento y puede
+    // tener una copia; hacerlo desaparecer del histórico deja un hueco sin
+    // explicación y destruye la prueba de un trabajo realizado.
+    //
+    // Para eso está anular: conserva el acta con su sello de «sin validez» y
+    // programa una sustituta. La aplicación promete que un acta firmada no se
+    // toca, y esta guarda es la que hace que sea verdad.
+    if (visita.firmado) {
+      return {
+        error:
+          "Una visita firmada no se puede borrar. Si el acta es incorrecta, " +
+          "anúlala: se conserva marcada como sin validez y se programa otra.",
+        estado: 409 as const,
+      };
+    }
+
+    // Las claves se recogen ANTES de borrar: la cascada se lleva las filas
+    // que dicen qué archivos existen, y después no habría forma de saberlo.
+    const claves = await clavesDeAlmacenamiento(tx, [id]);
+
+    await tx.delete(intervenciones).where(eq(intervenciones.id, id));
+    return { claves };
+  });
+
+  if ("error" in resultado && resultado.error) {
     return NextResponse.json(
-      { error: "Visita no encontrada." },
-      { status: 404 }
+      { error: resultado.error },
+      { status: resultado.estado }
     );
   }
+
+  await borrarDelAlmacen(resultado.claves ?? []);
 
   return NextResponse.json({ ok: true });
 }

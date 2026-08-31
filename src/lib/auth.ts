@@ -10,11 +10,32 @@ export { hashPassword, verificarPassword };
 
 const COOKIE_NAME = "sesion";
 
+/**
+ * Longitud mínima del secreto de firma.
+ *
+ * HS256 usa el secreto tal cual como clave HMAC: uno corto se puede romper
+ * por fuerza bruta fuera de línea a partir de un solo token, y con él se
+ * firman sesiones de administrador. 32 caracteres es lo que genera
+ * `openssl rand -base64 32`, que es lo que documenta el .env.example.
+ */
+const MIN_SECRETO = 32;
+
 function obtenerSecreto(): Uint8Array {
   const secreto = process.env.AUTH_SECRET;
   if (!secreto) {
     throw new Error(
       "Falta AUTH_SECRET en las variables de entorno (mínimo 32 caracteres aleatorios)."
+    );
+  }
+  // Antes solo se comprobaba que existiera: el mensaje exigía 32 caracteres
+  // y el código aceptaba uno. Un despliegue con AUTH_SECRET=secreto firmaba
+  // sesiones válidas y nadie se enteraba.
+  if (secreto.length < MIN_SECRETO) {
+    throw new Error(
+      `AUTH_SECRET tiene ${secreto.length} caracteres y necesita al menos ` +
+        `${MIN_SECRETO}. Con HS256 el secreto ES la clave: uno corto se ` +
+        "rompe fuera de línea a partir de un solo token. Genera uno con " +
+        "`openssl rand -base64 32`."
     );
   }
   return new TextEncoder().encode(secreto);

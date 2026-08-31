@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { conSesionRLS } from "@/db";
 import { usuarios } from "@/db/schema";
-import { obtenerSesion } from "@/lib/auth";
+import { obtenerSesion, tieneRol } from "@/lib/auth";
 import { hashPassword } from "@/lib/password";
 import { exigirAdmin } from "@/lib/permisos";
 import { campoDocumentoOpcional, campoIsla } from "@/lib/esquemas";
@@ -23,21 +23,41 @@ export async function GET() {
     return NextResponse.json({ error: "No autenticado." }, { status: 401 });
   }
 
-  // La política usuarios_select permite leer a cualquier usuario autenticado
-  // (para ver nombres de técnico asignado, etc.), pero no todos los campos
-  // deberían viajar al cliente — se excluye passwordHash explícitamente.
+  // Listar el personal no es trabajo de campo. Antes bastaba con tener
+  // sesión, así que un técnico podía descargarse el correo y el DNI de toda
+  // la plantilla — el mismo fallo que se corrigió en la cartera de clientes,
+  // en la tabla de al lado.
+  //
+  // Oficina sí lo necesita: es quien asigna las visitas. Pero para eso le
+  // basta con el nombre y la isla, no con el documento de identidad.
+  if (!tieneRol(sesion, ["admin", "oficina"])) {
+    return NextResponse.json(
+      { error: "No tienes permiso para ver el personal." },
+      { status: 403 }
+    );
+  }
+
+  const esAdmin = sesion.rol === "admin";
+
   const resultado = await conSesionRLS(sesion, (tx) =>
     tx
       .select({
         id: usuarios.id,
         nombre: usuarios.nombre,
-        email: usuarios.email,
         rol: usuarios.rol,
-        documento: usuarios.documento,
         isla: usuarios.isla,
-        veTodosClientes: usuarios.veTodosClientes,
         activo: usuarios.activo,
-        creadoEn: usuarios.creadoEn,
+        // Solo administración, que es quien gestiona las altas y los
+        // permisos. El documento aparece en las actas firmadas, así que es
+        // un dato personal de un empleado, no un identificador de trabajo.
+        ...(esAdmin
+          ? {
+              email: usuarios.email,
+              documento: usuarios.documento,
+              veTodosClientes: usuarios.veTodosClientes,
+              creadoEn: usuarios.creadoEn,
+            }
+          : {}),
       })
       .from(usuarios)
       .orderBy(usuarios.nombre)

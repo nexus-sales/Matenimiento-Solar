@@ -117,10 +117,16 @@ export async function POST(req: NextRequest) {
     let insertados = 0;
     let actualizados = 0;
 
-    for (const f of aInsertar) {
-      if (!f.datos) continue;
-      await tx.insert(clientes).values(valoresCliente(f.datos));
-      insertados++;
+    // Una sola sentencia en vez de una por fila. Con una cartera de mil
+    // clientes eran mil viajes a la base, todos dentro de la misma
+    // transacción: correcto, pero mucho más lento de lo necesario.
+    const nuevos = aInsertar
+      .filter((f) => f.datos)
+      .map((f) => valoresCliente(f.datos!));
+
+    if (nuevos.length) {
+      await tx.insert(clientes).values(nuevos);
+      insertados = nuevos.length;
     }
 
     for (const f of aActualizar) {

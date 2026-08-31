@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { conSesionRLS } from "@/db";
-import { respuestaFoto } from "@/db/schema";
+import {
+  respuestaFoto,
+  respuestas,
+  intervenciones,
+} from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { obtenerSesion } from "@/lib/auth";
 import { borrarFoto, leerFoto } from "@/lib/almacenamiento";
@@ -69,19 +73,51 @@ export async function DELETE(
 
   // El borrado también se apoya en RLS: si la política no deja ver la fila,
   // el DELETE no afecta a ninguna y se responde 404.
-  const [borrada] = await conSesionRLS(sesion, (tx) =>
-    tx.delete(respuestaFoto).where(eq(respuestaFoto.id, id)).returning()
-  );
+  //
+  // Pero RLS no sabe nada de firmas. La subida comprueba `firmado` y el
+  // borrado no lo hacía: se podían quitar fotos de un acta ya firmada, que
+  // es justo lo que la aplicación promete que no ocurre. Se comprueba aquí,
+  // dentro de la misma transacción que borra.
+  const resultado = await conSesionRLS(sesion, async (tx) => {
+    const [fila] = await tx
+      .select({
+        url: respuestaFoto.url,
+        firmado: intervenciones.firmado,
+        anulada: intervenciones.anulada,
+      })
+      .from(respuestaFoto)
+      .innerJoin(respuestas, eq(respuestas.id, respuestaFoto.respuestaId))
+      .innerJoin(intervenciones, eq(intervenciones.id, respuestas.intervencionId))
+      .where(eq(respuestaFoto.id, id))
+      .limit(1);
 
-  if (!borrada) {
-    return NextResponse.json({ error: "Foto no encontrada." }, { status: 404 });
+    if (!fila) return { error: "Foto no encontrada.", estado: 404 as const };
+
+    if (fila.firmado) {
+      return {
+        error:
+          "Esta foto forma parte de un acta firmada y no se puede borrar. " +
+          "Si el acta es incorrecta, anúlala y programa una visita nueva.",
+        estado: 409 as const,
+      };
+    }
+
+    await tx.delete(respuestaFoto).where(eq(respuestaFoto.id, id));
+    return { url: fila.url };
+  });
+
+  if ("error" in resultado && resultado.error) {
+    return NextResponse.json(
+      { error: resultado.error },
+      { status: resultado.estado }
+    );
   }
 
   // El archivo se borra después de la fila. Si esto falla queda un objeto
   // huérfano ocupando espacio, que es mucho menos grave que una fila
   // apuntando a un archivo inexistente.
   try {
-    await borrarFoto(borrada.url);
+    if (resultado.url) await borrarFoto(resultado.url);
   } catch {
     // Se ignora a propósito: la foto ya no es accesible desde la aplicación.
   }

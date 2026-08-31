@@ -5,6 +5,7 @@ import {
   respuestas,
   observacionesBloque,
   intervenciones,
+  plantillaCampo,
 } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { obtenerSesion } from "@/lib/auth";
@@ -108,7 +109,10 @@ export async function PUT(
     // Una visita ya firmada no se retoca: el informe firmado por el cliente
     // y lo que hay en la base tienen que decir lo mismo.
     const [visita] = await tx
-      .select({ firmado: intervenciones.firmado })
+      .select({
+        firmado: intervenciones.firmado,
+        plantilla: intervenciones.plantilla,
+      })
       .from(intervenciones)
       .where(eq(intervenciones.id, intervencionId))
       .limit(1);
@@ -118,6 +122,30 @@ export async function PUT(
       return {
         error: "La visita ya está firmada y no admite cambios.",
         estado: 409,
+      };
+    }
+
+    // El campo tiene que ser de la plantilla de ESTA intervención y estar
+    // activo. Sin esta comprobación bastaba con un UUID válido: se podía
+    // colgar una respuesta de un campo del acta de obra en una visita de
+    // mantenimiento, y quedaba invisible en pantalla y en el PDF pero
+    // presente en el histórico.
+    const [campo] = await tx
+      .select({ id: plantillaCampo.id })
+      .from(plantillaCampo)
+      .where(
+        and(
+          eq(plantillaCampo.id, itemId),
+          eq(plantillaCampo.plantilla, visita.plantilla),
+          eq(plantillaCampo.activo, true)
+        )
+      )
+      .limit(1);
+
+    if (!campo) {
+      return {
+        error: "Ese campo no pertenece al formulario de esta visita.",
+        estado: 400 as const,
       };
     }
 
@@ -176,7 +204,10 @@ async function guardarObservacionBloque(
 
   const guardado = await conSesionRLS(sesion, async (tx) => {
     const [visita] = await tx
-      .select({ firmado: intervenciones.firmado })
+      .select({
+        firmado: intervenciones.firmado,
+        plantilla: intervenciones.plantilla,
+      })
       .from(intervenciones)
       .where(eq(intervenciones.id, intervencionId))
       .limit(1);
@@ -188,6 +219,7 @@ async function guardarObservacionBloque(
         estado: 409,
       };
     }
+
 
     const [existente] = await tx
       .select()

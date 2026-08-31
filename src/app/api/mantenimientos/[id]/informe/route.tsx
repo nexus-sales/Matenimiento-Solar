@@ -165,14 +165,39 @@ export async function GET(
   );
 
   // react-pdf no descarga imágenes: hay que traerlas y pasarlas incrustadas.
+  //
+  // TODAS de golpe, antes de componer nada. Antes se pedían de una en una
+  // dentro de los bucles: un acta de obra con cuarenta fotos eran cuarenta
+  // viajes a MinIO en fila, cada uno esperando al anterior. Con `Promise.all`
+  // el tiempo pasa a ser el de la más lenta, no la suma de todas.
+  //
+  // Las claves se deduplican con el Set: si la misma foto apareciera dos
+  // veces, se descarga una.
   const cacheFotos = new Map<string, string>();
-  async function comoDataUri(clave: string): Promise<string | null> {
-    if (cacheFotos.has(clave)) return cacheFotos.get(clave)!;
-    const objeto = await leerFoto(clave);
-    if (!objeto) return null;
-    const uri = `data:${objeto.tipo};base64,${Buffer.from(objeto.cuerpo).toString("base64")}`;
-    cacheFotos.set(clave, uri);
-    return uri;
+
+  if (ALMACENAMIENTO_CONFIGURADO) {
+    const claves = [...new Set(fotos.map((f) => f.url))];
+    const descargas = await Promise.all(
+      claves.map(async (clave) => {
+        try {
+          const objeto = await leerFoto(clave);
+          if (!objeto) return null;
+          return [
+            clave,
+            `data:${objeto.tipo};base64,${Buffer.from(objeto.cuerpo).toString("base64")}`,
+          ] as const;
+        } catch {
+          // Una foto que ya no esté en el almacén no debe impedir que se
+          // emita el acta: se omite y el resto sigue.
+          return null;
+        }
+      })
+    );
+    for (const d of descargas) if (d) cacheFotos.set(d[0], d[1]);
+  }
+
+  function comoDataUri(clave: string): string | null {
+    return cacheFotos.get(clave) ?? null;
   }
 
   const aplicables = items.filter((i) =>
@@ -199,15 +224,9 @@ export async function GET(
         ? (fotosPorRespuesta.get(respuesta.id) ?? [])
         : [];
 
-      const incrustadas: string[] = [];
-      if (ALMACENAMIENTO_CONFIGURADO) {
-        for (const f of susFotos) {
-          const uri = await comoDataUri(f.url);
-          // Una foto que ya no está en el almacenamiento no debe impedir
-          // que se emita el acta: se omite y el resto sigue.
-          if (uri) incrustadas.push(uri);
-        }
-      }
+      const incrustadas = susFotos
+        .map((f) => comoDataUri(f.url))
+        .filter((uri): uri is string => uri !== null);
 
       puntos.push({
         nombre: item.nombre,

@@ -6,6 +6,12 @@ import { obtenerSesion } from "@/lib/auth";
 import { exigirRolEscritura } from "@/lib/permisos";
 import { esquemaCliente, valoresCliente } from "@/lib/esquemas";
 import { errorDeDuplicado } from "@/lib/conflictos";
+import {
+  actasFirmadasDe,
+  borrarDelAlmacen,
+  clavesDeAlmacenamiento,
+  intervencionesDe,
+} from "@/lib/borrado";
 
 /**
  * Ficha completa del cliente más su histórico de visitas. Las visitas se
@@ -123,19 +129,58 @@ export async function DELETE(
 
   const { id } = await params;
 
-  // Borra en cascada el histórico de mantenimientos del cliente (definido
-  // en el esquema con onDelete: "cascade"). La interfaz debe pedir
-  // confirmación antes de llamar aquí.
-  const [borrado] = await conSesionRLS(sesion, (tx) =>
-    tx.delete(clientes).where(eq(clientes.id, id)).returning()
-  );
+  const resultado = await conSesionRLS(sesion, async (tx) => {
+    const [cliente] = await tx
+      .select({ id: clientes.id })
+      .from(clientes)
+      .where(eq(clientes.id, id))
+      .limit(1);
 
-  if (!borrado) {
+    if (!cliente) {
+      return { error: "Cliente no encontrado.", estado: 404 as const };
+    }
+
+    // Borrar un cliente arrastra en cascada TODO su histórico: visitas,
+    // respuestas y fotos. Si entre ellas hay actas firmadas, eso es destruir
+    // documentos que el cliente firmó y de los que puede tener copia.
+    //
+    // Se bloquea. No es una molestia gratuita: la aplicación afirma —al
+    // técnico, al cliente y en la política de privacidad— que un acta
+    // firmada no se altera ni desaparece, y sin esta guarda esa afirmación
+    // era falsa. Un cliente que ya no lo es se desmarca del mantenimiento en
+    // su ficha; su histórico se queda donde tiene que estar.
+    const firmadas = await actasFirmadasDe(tx, id);
+    if (firmadas > 0) {
+      return {
+        error:
+          `Este cliente tiene ${firmadas} acta${firmadas === 1 ? "" : "s"} ` +
+          `firmada${firmadas === 1 ? "" : "s"} y no se puede borrar: se ` +
+          "destruiría documentación firmada por él. Si ya no es cliente, " +
+          "desmarca «tiene mantenimiento» en su ficha.",
+        estado: 409 as const,
+      };
+    }
+
+    // Sin actas firmadas sí se borra, y hay que llevarse también lo que haya
+    // en el almacén: la cascada limpia las filas, no los archivos.
+    const visitas = await intervencionesDe(tx, id);
+    const claves = await clavesDeAlmacenamiento(
+      tx,
+      visitas.map((v) => v.id)
+    );
+
+    await tx.delete(clientes).where(eq(clientes.id, id));
+    return { claves };
+  });
+
+  if ("error" in resultado && resultado.error) {
     return NextResponse.json(
-      { error: "Cliente no encontrado." },
-      { status: 404 }
+      { error: resultado.error },
+      { status: resultado.estado }
     );
   }
+
+  await borrarDelAlmacen(resultado.claves ?? []);
 
   return NextResponse.json({ ok: true });
 }

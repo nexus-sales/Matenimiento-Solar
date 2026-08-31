@@ -142,6 +142,24 @@ const e = StyleSheet.create({
   bandaTitulo: { fontSize: 11, fontFamily: "Helvetica-Bold", letterSpacing: 1 },
   bandaTexto: { fontSize: 8, marginTop: 2 },
 
+  proteccionDatos: {
+    marginTop: 14,
+    padding: 8,
+    borderWidth: 0.5,
+    borderColor: LINEA,
+    fontSize: 6.5,
+    color: SUAVE,
+    lineHeight: 1.45,
+  },
+  proteccionTitulo: {
+    fontSize: 6.5,
+    fontFamily: "Helvetica-Bold",
+    color: TENUE,
+    letterSpacing: 0.4,
+    marginBottom: 3,
+  },
+  proteccionEtiqueta: { fontFamily: "Helvetica-Bold", color: TENUE },
+
   pie: {
     position: "absolute",
     bottom: 24,
@@ -181,6 +199,13 @@ export type DatosInforme = {
   documento: { titulo: string; subtitulo: string; encabezado: string };
   /** Qué se hizo, para la línea de referencia: "Visita semestral", "Acta de obra". */
   referencia: string;
+  /** Información del artículo 13 que se imprime al pie de la conformidad. */
+  legal: {
+    responsable: string;
+    cif: string | null;
+    contacto: string | null;
+    url: string;
+  };
   visita: {
     id: string;
     tipo: "semestral" | "anual";
@@ -266,7 +291,8 @@ function Dato({
 }
 
 export function InformeMantenimiento({ datos }: { datos: DatosInforme }) {
-  const { visita, cliente, tecnico, bloques, documento, referencia } = datos;
+  const { visita, cliente, tecnico, bloques, documento, referencia, legal } =
+    datos;
 
   const direccion = [
     cliente.direccion,
@@ -501,6 +527,35 @@ export function InformeMantenimiento({ datos }: { datos: DatosInforme }) {
 
           <Text style={{ fontSize: 8, color: SUAVE, marginTop: 8 }}>
             Firmado el {fecha(visita.firmadoEn)}.
+          </Text>
+        </View>
+
+        {/* Informacion basica de proteccion de datos, articulo 13 del RGPD.
+            
+            Va en el propio documento porque es el que se lleva el cliente:
+            el aviso que vio en la pantalla del tecnico desaparece al cerrar
+            la visita, y este papel se queda con el. */}
+        <View style={e.proteccionDatos} wrap={false}>
+          <Text style={e.proteccionTitulo}>
+            INFORMACIÓN BÁSICA SOBRE PROTECCIÓN DE DATOS
+          </Text>
+          <Text>
+            <Text style={e.proteccionEtiqueta}>Responsable: </Text>
+            {legal.responsable}
+            {legal.cif ? ` (${legal.cif})` : ""}.{"  "}
+            <Text style={e.proteccionEtiqueta}>Finalidad: </Text>
+            ejecutar el servicio contratado y acreditar el trabajo realizado.
+            {"  "}
+            <Text style={e.proteccionEtiqueta}>Legitimación: </Text>
+            ejecución del contrato, obligación legal e interés legítimo.{"  "}
+            <Text style={e.proteccionEtiqueta}>Destinatarios: </Text>
+            no se ceden datos a terceros.{"  "}
+            <Text style={e.proteccionEtiqueta}>Derechos: </Text>
+            acceso, rectificación, supresión, oposición, limitación y
+            portabilidad
+            {legal.contacto ? `, escribiendo a ${legal.contacto}` : ""}.{"  "}
+            <Text style={e.proteccionEtiqueta}>Información adicional: </Text>
+            {legal.url}
           </Text>
         </View>
 

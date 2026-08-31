@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { obtenerSesion } from "@/lib/auth";
+import { datosLegalesPendientes } from "@/lib/legal";
 
 /**
  * Índice de configuración.
@@ -29,6 +30,13 @@ const SECCIONES = [
       "excepción, técnico por técnico.",
   },
   {
+    href: "/legal/privacidad",
+    titulo: "Textos legales",
+    descripcion:
+      "Privacidad, cookies y aviso legal. Se generan con los datos de la " +
+      "empresa; si falta alguno, se avisa aquí abajo.",
+  },
+  {
     href: "/configuracion/formularios",
     titulo: "Formularios",
     descripcion:
@@ -43,12 +51,35 @@ export default async function ConfiguracionPage() {
     redirect("/");
   }
 
+  const pendientes = datosLegalesPendientes();
+
   return (
     <main className="mx-auto max-w-3xl p-4 sm:p-8">
       <h1 className="text-xl font-semibold">Configuración</h1>
       <p className="mt-1 mb-6 text-sm text-suave">
         Lo que solo puede tocar administración.
       </p>
+
+      {/* Los textos legales se construyen con los datos de la empresa. Los que
+          falten salen marcados en la página pública, así que conviene que
+          administración se entere aquí y no cuando lo vea un cliente. */}
+      {pendientes.length > 0 && (
+        <div className="mb-6 rounded-lg border border-aviso bg-aviso-suave p-4 text-sm text-aviso-contraste">
+          <p className="font-semibold">
+            Faltan datos en los textos legales
+          </p>
+          <ul className="mt-1 list-disc pl-5">
+            {pendientes.map((f) => (
+              <li key={f}>{f}</li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs">
+            Aparecen marcados como pendientes en las páginas públicas de
+            privacidad y aviso legal, y en el pie de cada acta. Se rellenan con
+            las variables <code>LEGAL_*</code> en el panel de despliegue.
+          </p>
+        </div>
+      )}
 
       <div className="divide-y divide-borde overflow-hidden rounded-lg border border-borde bg-superficie">
         {SECCIONES.map((s) => (

@@ -883,6 +883,37 @@ export default function VisitaPage() {
             </div>
           </div>
 
+          {/* Informacion basica del articulo 13 del RGPD, en el momento en
+              que el cliente aporta su firma y su documento.
+              
+              Va AQUI y no en un pie de pagina porque este es el instante en
+              que se recogen los datos, y es lo que exige la norma: informar
+              antes, no despues. Se muestra en dos capas —lo esencial a la
+              vista, el detalle en el enlace— como recomienda la Agencia. El
+              enlace es publico, asi que el cliente puede abrirlo desde su
+              propio movil. */}
+          <div className="mt-4 rounded-lg border border-borde bg-superficie-alt p-3 text-xs text-suave">
+            <p className="mb-1 font-semibold text-texto">
+              Información básica sobre protección de datos
+            </p>
+            <p className="mb-0">
+              Los datos y la firma se incorporan al acta de esta visita, cuyo
+              responsable es <strong>SR Energía</strong>. Se tratan para
+              ejecutar el servicio contratado y acreditar el trabajo realizado,
+              y se conservan durante los plazos legales. Puedes ejercer tus
+              derechos de acceso, rectificación y supresión, entre otros.{" "}
+              <a
+                href="/legal/privacidad"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline"
+              >
+                Información completa
+              </a>
+              .
+            </p>
+          </div>
+
           <button
             onClick={firmar}
             disabled={!completo || firmando}

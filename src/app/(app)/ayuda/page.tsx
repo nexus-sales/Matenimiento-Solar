@@ -387,6 +387,40 @@ export default async function AyudaPage() {
       </Seccion>
 
       <Seccion
+        titulo="Protección de datos"
+        descripcion="La aplicación guarda documentos de identidad, direcciones y fotografías de viviendas. Eso son datos personales de terceros."
+      >
+        <ul>
+          <li>
+            <strong>Antes de que el cliente firme</strong>, la pantalla muestra
+            la información básica de protección de datos, y el acta la repite.
+            No hace falta hacer nada: ya está ahí.
+          </li>
+          <li>
+            <strong>Las fotos son de la casa de alguien.</strong> No se
+            reenvían por WhatsApp ni se guardan en la galería del móvil: se
+            suben a la aplicación y ahí se quedan.
+          </li>
+          <li>
+            <strong>Si un cliente pregunta</strong> qué datos suyos hay o pide
+            que se corrijan o se borren, pásalo a administración. Hay un mes
+            para responder y es gratis para él.
+          </li>
+        </ul>
+        <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+          <a href="/legal/privacidad" className="text-acento-contraste underline">
+            Política de privacidad
+          </a>
+          <a href="/legal/cookies" className="text-acento-contraste underline">
+            Política de cookies
+          </a>
+          <a href="/legal/aviso-legal" className="text-acento-contraste underline">
+            Aviso legal
+          </a>
+        </p>
+      </Seccion>
+
+      <Seccion
         titulo="Quién puede hacer qué"
         descripcion="Las reglas no son solo de pantalla: la base de datos las aplica por su cuenta."
       >

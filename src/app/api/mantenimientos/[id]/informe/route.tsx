@@ -18,6 +18,7 @@ import {
   NOMBRE_PLANTILLA,
   TEXTOS_DOCUMENTO,
 } from "@/lib/plantillas";
+import { RESPONSABLE } from "@/lib/legal";
 import { InformeMantenimiento, type DatosInforme } from "@/lib/informe-pdf";
 import {
   ALMACENAMIENTO_CONFIGURADO,
@@ -230,6 +231,14 @@ export async function GET(
 
   const datos: DatosInforme = {
     documento: TEXTOS_DOCUMENTO[visita.plantilla],
+    legal: {
+      responsable: RESPONSABLE.nombre,
+      cif: RESPONSABLE.cif,
+      contacto: RESPONSABLE.email,
+      // Absoluta a propósito: el acta se lee en papel o fuera de la
+      // aplicación, donde una ruta relativa no lleva a ningún sitio.
+      url: `${process.env.APP_URL ?? "https://mantenimiento.nexus-sales.eu"}/legal/privacidad`,
+    },
     // Semestral y anual solo significan algo en el mantenimiento; en una
     // obra la referencia es el propio tipo de documento.
     referencia:

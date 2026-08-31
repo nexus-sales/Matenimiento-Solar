@@ -72,6 +72,20 @@ export default function LoginPage() {
           {enviando ? "Entrando…" : "Entrar"}
         </button>
       </form>
+
+      {/* Los enlaces legales van en el login porque es la unica pantalla que
+          se ve sin sesion, y porque el aviso legal exige que sean accesibles. */}
+      <nav className="mt-6 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-tenue">
+        <a href="/legal/privacidad" className="hover:underline">
+          Privacidad
+        </a>
+        <a href="/legal/cookies" className="hover:underline">
+          Cookies
+        </a>
+        <a href="/legal/aviso-legal" className="hover:underline">
+          Aviso legal
+        </a>
+      </nav>
     </main>
   );
 }

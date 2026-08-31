@@ -6,7 +6,12 @@ import { modoPruebasActivo } from "@/lib/modo-pruebas";
 // component con obtenerSesion() — el proxy no puede usar `jose` con
 // el runtime edge por defecto de forma sencilla, así que su trabajo es
 // solo evitar que alguien sin cookie llegue a ver la interfaz.
-const RUTAS_PUBLICAS = ["/login", "/api/auth/login"];
+// /legal es público a propósito: quien tiene derecho a leer la información
+// de protección de datos es el cliente cuyos datos se tratan, y esa persona
+// no tiene cuenta —firma una vez, en su casa, desde el móvil del técnico—.
+// Exigir sesión para leerla dejaría la información fuera del alcance de quien
+// más la necesita.
+const RUTAS_PUBLICAS = ["/login", "/api/auth/login", "/legal"];
 
 export function proxy(req: NextRequest) {
   // modoPruebasActivo() lanza si alguien lo deja activo en producción —

@@ -15,6 +15,9 @@ const esquemaActualizar = z.object({
   documento: campoDocumentoOpcional,
   isla: campoIsla,
   activo: z.boolean().optional(),
+  // Excepcion al filtro de cartera. Solo significa algo para un tecnico:
+  // oficina y admin ya la ven entera por su propia politica.
+  veTodosClientes: z.boolean().optional(),
   password: z.string().min(8).optional(), // opcional: solo si se resetea
 });
 
@@ -74,6 +77,9 @@ async function aplicarCambios(
   if (d.isla !== undefined) cambios.isla = d.isla || null;
   if (d.documento !== undefined) cambios.documento = d.documento;
   if (d.activo !== undefined) cambios.activo = d.activo;
+  if (d.veTodosClientes !== undefined) {
+    cambios.veTodosClientes = d.veTodosClientes;
+  }
   if (d.password) cambios.passwordHash = await hashPassword(d.password);
 
   const [actualizado] = await conSesionRLS(sesion, (tx) =>
@@ -88,6 +94,7 @@ async function aplicarCambios(
         rol: usuarios.rol,
         documento: usuarios.documento,
         isla: usuarios.isla,
+        veTodosClientes: usuarios.veTodosClientes,
         activo: usuarios.activo,
       })
   );

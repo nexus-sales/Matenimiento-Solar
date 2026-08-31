@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { leerErrorApi } from "@/lib/errores-api";
 import { SelectIsla } from "../componentes/select-isla";
 
@@ -150,7 +151,12 @@ export default function UsuariosClient() {
 
   return (
     <main className="max-w-5xl mx-auto p-4 sm:p-8">
-      <div className="flex items-center justify-between mb-4">
+      {/* La URL se queda en /usuarios: ya circulan enlaces a ella. Lo que
+          cambia es dónde se entra, que ahora es Configuración. */}
+      <Link href="/configuracion" className="text-sm text-suave">
+        ← Configuración
+      </Link>
+      <div className="flex items-center justify-between mb-4 mt-2">
         <h1 className="text-xl font-semibold">Usuarios</h1>
         <button
           onClick={() => setMostrarForm((v) => !v)}

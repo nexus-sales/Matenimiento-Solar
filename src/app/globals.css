@@ -64,6 +64,7 @@
 
   /* Coral: avisos que no son errores */
   --aviso: #f3a267;
+  --aviso-suave: #fdf2e9;
   --aviso-contraste: #b45c26;
 
   /* Rojo: errores y acciones destructivas */
@@ -111,6 +112,7 @@
   --info-contraste: #8fb6dd;
 
   --aviso: #e8a068;
+  --aviso-suave: #2a1d12;
   --aviso-contraste: #e8a068;
 
   --peligro: #f28b82;
@@ -150,6 +152,7 @@
   --color-info-contraste: var(--info-contraste);
 
   --color-aviso: var(--aviso);
+  --color-aviso-suave: var(--aviso-suave);
   --color-aviso-contraste: var(--aviso-contraste);
 
   --color-peligro: var(--peligro);

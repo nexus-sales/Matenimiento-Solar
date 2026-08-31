@@ -85,6 +85,17 @@ export const usuarios = pgTable("usuarios", {
   documento: text("documento"),
   rol: rolEnum("rol").notNull().default("tecnico"),
   isla: islaEnum("isla"), // solo aplica a técnicos
+
+  /**
+   * Excepcion, por tecnico, a la regla de que solo ve los clientes de sus
+   * visitas. La decide administracion desde Configuracion.
+   *
+   * La comprueba la POLITICA RLS, no la aplicacion: si viviera en la sesion
+   * quitarsela a alguien no tendria efecto hasta que caducara su JWT, y para
+   * un permiso eso es justo la direccion peligrosa.
+   */
+  veTodosClientes: boolean("ve_todos_clientes").notNull().default(false),
+
   activo: boolean("activo").notNull().default(true),
   creadoEn: timestamp("creado_en").notNull().defaultNow(),
 });

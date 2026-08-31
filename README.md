@@ -183,6 +183,9 @@ src/
     permisos.ts               guardas de rol en la API
     tema.ts                   script anti-parpadeo del tema
     plantillas.ts             las tres plantillas y sus bloques
+  app/(app)/configuracion/    módulo de administración
+    acceso/                   excepción de cartera por técnico
+    formularios/              activar y desactivar campos
   proxy.ts                    protección de rutas (era middleware.ts)
   db/plantillas/              catálogos de campos, compartidos por seed y servidor
     mantenimiento.json        los 24 puntos del contrato
@@ -296,7 +299,7 @@ sobre (`intervencion_id`, `categoria`).
 Varias fotos por punto: `url`, `pie`, `orden`. La URL apunta al almacenamiento
 de objetos, con la imagen ya comprimida en el móvil antes de subirla.
 
-### `usuarios` — 9 columnas
+### `usuarios` — 10 columnas
 
 `nombre`, `email` **único**, `documento`, `password_hash`, `rol`,
 `isla` (solo técnicos), `activo`.
@@ -634,11 +637,11 @@ temas.
 
 ## Qué falta
 
-1. **Editor de plantillas.** Los tres catálogos son fijos: se siembran y solo
-   se tocan por SQL. El administrador tiene que poder desactivar campos que no
-   apliquen —los doce huecos de número de serie sobran en una instalación de
-   seis paneles—, renombrarlos y añadir los suyos. Es lo que convierte esto de
-   un encargo en un producto vendible a otro instalador.
+1. **Editor de plantillas, más allá de activar y desactivar.** Configuración →
+   Formularios ya permite desactivar los campos que no apliquen —los doce huecos
+   de número de serie sobran en una instalación de seis paneles—. Falta poder
+   **renombrarlos, reordenarlos y añadir los propios**, que es lo que convierte
+   esto de un encargo en un producto vendible a otro instalador.
 2. **Mostrar el rastro de una anulación.** Al anular se guarda quién lo hizo
    (`anulada_por`) y con qué acta se sustituyó (`sustituida_por`), pero no hay
    pantalla que lo enseñe. El rastro existe en la base y nadie puede verlo, que

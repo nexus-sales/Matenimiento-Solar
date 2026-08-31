@@ -315,6 +315,41 @@ export default async function AyudaPage() {
         </>
       )}
 
+      <Seccion
+        titulo="Configuración"
+        descripcion="Solo administración. Reúne lo que no es trabajo diario."
+      >
+        <ol>
+          <Paso n={1} titulo="Usuarios">
+            Altas, bajas y roles. Una baja desactiva, no borra: se conserva qué
+            técnico hizo cada visita.
+          </Paso>
+          <Paso n={2} titulo="Acceso a los clientes">
+            <p>
+              Un técnico ve solo los clientes de las visitas que tiene
+              asignadas. Aquí se hace la excepción, técnico por técnico, si
+              alguno necesita la cartera entera.
+            </p>
+            <p className="mt-1">
+              La regla la aplica la base de datos, no la pantalla, y quitar el
+              permiso tiene efecto de inmediato.
+            </p>
+          </Paso>
+          <Paso n={3} titulo="Formularios">
+            <p>
+              Los campos de las tres plantillas, con un interruptor cada uno.
+              Desactiva los que no apliquen: los doce huecos de número de serie
+              sobran en una instalación de seis paneles.
+            </p>
+            <p className="mt-1">
+              <strong>Desactivar no borra nada.</strong> Lo ya respondido se
+              conserva y sigue apareciendo en las actas firmadas; el campo solo
+              deja de pedirse en las visitas nuevas.
+            </p>
+          </Paso>
+        </ol>
+      </Seccion>
+
       <Seccion titulo="Dudas frecuentes">
         <Pregunta q="No me deja firmar la visita">
           Falta algún campo obligatorio, o hay una incidencia sin explicar. El
@@ -384,8 +419,9 @@ export default async function AyudaPage() {
                   Administración
                 </td>
                 <td className="py-2">
-                  Lo anterior, más gestionar usuarios y los catálogos de los
-                  tres formularios.
+                  Lo anterior, más todo lo de <strong>Configuración</strong>:
+                  usuarios, permisos de acceso y los catálogos de los tres
+                  formularios.
                 </td>
               </tr>
             </tbody>

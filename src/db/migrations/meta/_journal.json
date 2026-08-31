@@ -43,6 +43,13 @@
       "when": 1788091372370,
       "tag": "0005_bloques_libres",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788158178161,
+      "tag": "0006_permiso_cartera",
+      "breakpoints": true
     }
   ]
 }

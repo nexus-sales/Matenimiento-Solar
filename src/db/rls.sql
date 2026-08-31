@@ -88,16 +88,31 @@ CREATE POLICY clientes_oficina_admin_all ON clientes
 --
 -- Los datos que el técnico necesita para trabajar le siguen llegando: van
 -- dentro de la propia visita, que ya trae la ficha del cliente.
+--
+-- La excepcion `ve_todos_clientes` la decide administracion desde
+-- Configuracion, y se comprueba AQUI y no en la aplicacion: si viviera en la
+-- sesion, quitarsela a alguien no tendria efecto hasta que caducara su JWT
+-- —doce horas— y para un permiso esa es justo la direccion peligrosa.
+--
+-- La subconsulta sobre `usuarios` no depende de la fila de `clientes`, asi que
+-- PostgreSQL la evalua una sola vez por consulta, no una por cliente.
 DROP POLICY IF EXISTS clientes_tecnico_read ON clientes;
 DROP POLICY IF EXISTS clientes_tecnico_asignados ON clientes;
 CREATE POLICY clientes_tecnico_asignados ON clientes
   FOR SELECT
   USING (
     current_setting('app.current_user_rol', true) = 'tecnico'
-    AND EXISTS (
-      SELECT 1 FROM intervenciones m
-      WHERE m.cliente_id = clientes.id
-        AND m.tecnico_id::text = current_setting('app.current_user_id', true)
+    AND (
+      EXISTS (
+        SELECT 1 FROM intervenciones m
+        WHERE m.cliente_id = clientes.id
+          AND m.tecnico_id::text = current_setting('app.current_user_id', true)
+      )
+      OR EXISTS (
+        SELECT 1 FROM usuarios u
+        WHERE u.id::text = current_setting('app.current_user_id', true)
+          AND u.ve_todos_clientes
+      )
     )
   );
 

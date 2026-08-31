@@ -35,6 +35,7 @@ export async function GET() {
         rol: usuarios.rol,
         documento: usuarios.documento,
         isla: usuarios.isla,
+        veTodosClientes: usuarios.veTodosClientes,
         activo: usuarios.activo,
         creadoEn: usuarios.creadoEn,
       })

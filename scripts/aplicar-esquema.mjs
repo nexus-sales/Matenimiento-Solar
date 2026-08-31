@@ -301,7 +301,8 @@ try {
     if (process.env.RESTRINGIR_COLUMNAS_USUARIOS === "si") {
       await cliente.query(`
         REVOKE SELECT ON usuarios FROM ${ROL_APP};
-        GRANT SELECT (id, nombre, email, documento, rol, isla, activo, creado_en)
+        GRANT SELECT (id, nombre, email, documento, rol, isla,
+                      ve_todos_clientes, activo, creado_en)
           ON usuarios TO ${ROL_APP};
       `);
       ok(`${ROL_APP}: sin lectura de password_hash`);

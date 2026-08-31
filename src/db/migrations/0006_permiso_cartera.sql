@@ -1,0 +1,1 @@
+ALTER TABLE "usuarios" ADD COLUMN "ve_todos_clientes" boolean DEFAULT false NOT NULL;

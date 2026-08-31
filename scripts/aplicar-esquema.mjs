@@ -278,7 +278,10 @@ try {
 
     // --- Restringir la lectura del hash de contraseña -----------------
     //
-    // PENDIENTE DE REVISIÓN: solo se ejecuta con RESTRINGIR_COLUMNAS_USUARIOS=si.
+    // ACTIVO POR DEFECTO desde que se revisó y aplicó en el servidor. Se puede
+    // desactivar con RESTRINGIR_COLUMNAS_USUARIOS=no, pero conviene no hacerlo:
+    // el GRANT de arriba se ejecuta en CADA despliegue, así que un despliegue
+    // sin esto devolvería el permiso solo, sin que nadie se entere.
     //
     // El GRANT de arriba da SELECT sobre TODAS las columnas de `usuarios`,
     // incluida `password_hash`, y la política RLS `usuarios_select` deja
@@ -298,7 +301,7 @@ try {
     // lo hace con ROL_AUTH, no con ROL_APP. Las escrituras de usuarios usan
     // INSERT y UPDATE —que este REVOKE no toca— y sus `.returning()` piden
     // columnas explícitas, ninguna de ellas el hash.
-    if (process.env.RESTRINGIR_COLUMNAS_USUARIOS === "si") {
+    if (process.env.RESTRINGIR_COLUMNAS_USUARIOS !== "no") {
       await cliente.query(`
         REVOKE SELECT ON usuarios FROM ${ROL_APP};
         GRANT SELECT (id, nombre, email, documento, rol, isla,
@@ -309,7 +312,7 @@ try {
     } else {
       aviso(
         `${ROL_APP} puede leer password_hash — ` +
-          "actívalo con RESTRINGIR_COLUMNAS_USUARIOS=si"
+          "desactivado a mano con RESTRINGIR_COLUMNAS_USUARIOS=no"
       );
     }
 

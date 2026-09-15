@@ -34,18 +34,29 @@ const fechaOpcional = z
   .transform((v) => v || null);
 
 /**
- * Coordenada geográfica.
+ * Enlace a un mapa.
  *
- * Se validan los rangos reales: una latitud de 95 no es un sitio, es un error
- * de tecleo. Y a diferencia de `numeroOpcional`, aquí el cero y los negativos
- * son válidos —media España está en longitud negativa—.
+ * Se comprueba el esquema a propósito: un `javascript:...` guardado aquí sería
+ * ejecutable al pulsar el enlace en la ficha. Solo http y https.
  */
-function coordenada(min: number, max: number, mensaje: string) {
-  return z
-    .union([z.coerce.number().min(min, mensaje).max(max, mensaje), z.literal(""), z.null()])
-    .optional()
-    .transform((v) => (v === "" || v === undefined || v === null ? null : v));
-}
+const enlaceMapa = z
+  .union([
+    z
+      .string()
+      .trim()
+      .refine((v) => {
+        try {
+          const u = new URL(v);
+          return u.protocol === "http:" || u.protocol === "https:";
+        } catch {
+          return false;
+        }
+      }, "Tiene que ser un enlace que empiece por http:// o https://"),
+    z.literal(""),
+    z.null(),
+  ])
+  .optional()
+  .transform((v) => v || null);
 
 /**
  * Isla opcional.
@@ -149,10 +160,8 @@ export const esquemaCliente = z
     proveedor: vacioComoNulo,
     fechaInstalacion: fechaOpcional,
 
-    // Coordenadas de la instalación. Se validan los rangos reales: una
-    // latitud de 95 es un error de tecleo, no un sitio.
-    latitud: coordenada(-90, 90, "La latitud va de -90 a 90."),
-    longitud: coordenada(-180, 180, "La longitud va de -180 a 180."),
+    // Enlace de Google Maps a la instalación, para llegar hasta ella.
+    ubicacionUrl: enlaceMapa,
 
     // --- Servicio ---
     tieneMantenimiento: z.boolean().optional(),
@@ -209,9 +218,7 @@ export function valoresCliente(d: DatosCliente) {
     tieneBateria: d.tieneBateria ?? false,
     proveedor: d.proveedor,
     fechaInstalacion: d.fechaInstalacion,
-    // numeric de Postgres viaja como texto, igual que las potencias.
-    latitud: d.latitud?.toString() ?? null,
-    longitud: d.longitud?.toString() ?? null,
+    ubicacionUrl: d.ubicacionUrl,
     tieneMantenimiento: d.tieneMantenimiento ?? false,
     periodicidadMantenimiento: d.periodicidadMantenimiento,
     comentarios: d.comentarios,

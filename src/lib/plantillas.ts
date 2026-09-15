@@ -68,10 +68,10 @@ export const BLOQUES: Record<Plantilla, readonly Bloque[]> = {
     { clave: "cierre", nombre: "Finalización de obra" },
   ],
   punto_recarga: [
-    { clave: "cuadro", nombre: "Cuadro de origen" },
-    { clave: "canalizacion", nombre: "Canalizaciones" },
+    { clave: "cuadro", nombre: "Cuadro eléctrico" },
+    { clave: "canalizacion", nombre: "Canalización" },
     { clave: "contadores", nombre: "Cuarto de contadores" },
-    { clave: "ubicacion", nombre: "Localización del punto" },
+    { clave: "ubicacion", nombre: "Punto instalado" },
     { clave: "plaza", nombre: "Plaza de garaje" },
     { clave: "puesta_marcha", nombre: "Puesta en marcha" },
   ],

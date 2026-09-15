@@ -33,8 +33,7 @@ type Cliente = {
   tieneBateria: boolean;
   proveedor: string | null;
   fechaInstalacion: string | null;
-  latitud: string | null;
-  longitud: string | null;
+  ubicacionUrl: string | null;
   tieneMantenimiento: boolean;
   periodicidadMantenimiento: number | null;
   comentarios: string | null;
@@ -324,28 +323,25 @@ export default function ClienteDetallePage() {
               }
             />
           )}
-          {/* Las coordenadas solo valen si llevan a algún sitio: se pintan
-              como enlace al mapa, no como dos números que nadie va a teclear
-              en otra aplicación. Muchas instalaciones están en fincas sin
-              número de calle y la dirección no basta. */}
-          {cliente.latitud && cliente.longitud && (
-            <div className="col-span-2">
-              <dt className="text-xs text-tenue">Ubicación</dt>
-              <dd className="text-sm">
-                <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${cliente.latitud},${cliente.longitud}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-acento-contraste underline"
-                >
-                  Abrir en el mapa
-                </a>
-                <span className="ml-2 text-xs text-tenue">
-                  {cliente.latitud}, {cliente.longitud}
-                </span>
-              </dd>
-            </div>
-          )}
+          {/* El esquema se comprueba también aquí, no solo al guardar: si
+              una fila vieja trajera un `javascript:`, este enlace lo
+              ejecutaría al pulsarlo. Vale con mirar cómo empieza. */}
+          {cliente.ubicacionUrl &&
+            /^https?:\/\//i.test(cliente.ubicacionUrl) && (
+              <div className="col-span-2">
+                <dt className="text-xs text-tenue">Ubicación</dt>
+                <dd className="text-sm">
+                  <a
+                    href={cliente.ubicacionUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-acento-contraste underline"
+                  >
+                    Abrir en el mapa
+                  </a>
+                </dd>
+              </div>
+            )}
         </Bloque>
 
         {cliente.comentarios && (

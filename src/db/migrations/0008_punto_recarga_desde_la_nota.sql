@@ -1,0 +1,17 @@
+-- Rehace el catalogo del punto de recarga.
+--
+-- El primero lo construi copiando el patron de los otros formularios en vez
+-- de partir de lo que pidio el cliente: 42 campos donde su nota escrita a
+-- mano pone nueve puntos. Varios eran calcos literales del acta de obra y de
+-- la visita previa -"zona de trabajo recogida y limpia", "metros aproximados
+-- de recorrido"- y el resto, suposiciones mias sobre un oficio que no conozco.
+--
+-- Se borran las filas y el sembrado las vuelve a crear desde el JSON: el
+-- script siembra una plantilla cuando no tiene ningun campo, asi que basta
+-- con dejarla vacia.
+--
+-- SEGURO POR CONSTRUCCION: `respuestas.campo_id` apunta aqui SIN cascada, asi
+-- que si alguien hubiera respondido algo con el catalogo viejo este DELETE
+-- falla y la transaccion se deshace entera. No hay forma de perder una
+-- respuesta por accidente.
+DELETE FROM plantilla_campo WHERE plantilla = 'punto_recarga';

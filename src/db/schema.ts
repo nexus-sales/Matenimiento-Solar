@@ -158,16 +158,20 @@ export const clientes = pgTable("clientes", {
   fechaInstalacion: date("fecha_instalacion"),
 
   /**
-   * Coordenadas de la instalacion, para llegar hasta ella.
+   * Enlace de Google Maps a la instalacion.
    *
-   * Es un dato de la instalacion, como la direccion: NO geolocaliza a nadie.
-   * La aplicacion no pide la posicion del dispositivo en ningun momento -la
-   * cabecera Permissions-Policy lo sigue impidiendo-; estas se teclean o se
-   * pegan desde un mapa. Muchas instalaciones estan en fincas sin numero de
-   * calle y la direccion no basta para llegar.
+   * Un enlace y no un par de coordenadas porque es lo que se pidio y porque es
+   * lo que de verdad se rellena: en el movil se comparte la ubicacion y se
+   * pega. Copiar latitud y longitud son tres pasos mas y nadie los da.
+   *
+   * Es un dato de la INSTALACION, como la direccion: la aplicacion no pide la
+   * posicion del dispositivo en ningun momento -la cabecera Permissions-Policy
+   * lo sigue impidiendo- y no geolocaliza a nadie.
+   *
+   * Se guarda la direccion tal cual, y al pintarla se comprueba que sea http o
+   * https: un `javascript:` en un href seria ejecutable al pulsarlo.
    */
-  latitud: numeric("latitud"),
-  longitud: numeric("longitud"),
+  ubicacionUrl: text("ubicacion_url"),
 
   // --- Servicio ---
   // Si el cliente tiene contratado el mantenimiento periódico. Es lo que

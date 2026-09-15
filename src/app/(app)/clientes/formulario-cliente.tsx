@@ -34,8 +34,7 @@ export type ClienteFormulario = {
   tieneBateria: boolean;
   proveedor: string;
   fechaInstalacion: string;
-  latitud: string;
-  longitud: string;
+  ubicacionUrl: string;
   tieneMantenimiento: boolean;
   periodicidadMantenimiento: string;
   comentarios: string;
@@ -69,8 +68,7 @@ export function formularioVacio(): ClienteFormulario {
     tieneBateria: false,
     proveedor: "",
     fechaInstalacion: "",
-    latitud: "",
-    longitud: "",
+    ubicacionUrl: "",
     tieneMantenimiento: false,
     periodicidadMantenimiento: "",
     comentarios: "",
@@ -102,8 +100,7 @@ export function formularioDesdeCliente(
     tieneBateria: Boolean(c.tieneBateria),
     proveedor: texto(c.proveedor),
     fechaInstalacion: texto(c.fechaInstalacion),
-    latitud: texto(c.latitud),
-    longitud: texto(c.longitud),
+    ubicacionUrl: texto(c.ubicacionUrl),
     tieneMantenimiento: Boolean(c.tieneMantenimiento),
     periodicidadMantenimiento: c.periodicidadMantenimiento
       ? String(c.periodicidadMantenimiento)
@@ -134,8 +131,7 @@ export function cuerpoCliente(v: ClienteFormulario) {
     tieneBateria: v.tieneBateria,
     proveedor: v.proveedor,
     fechaInstalacion: v.fechaInstalacion,
-    latitud: v.latitud,
-    longitud: v.longitud,
+    ubicacionUrl: v.ubicacionUrl,
     tieneMantenimiento: v.tieneMantenimiento,
     // El desplegable manda texto; la API espera el numero o nada.
     periodicidadMantenimiento: v.periodicidadMantenimiento
@@ -442,26 +438,18 @@ export function FormularioCliente({
           />
         </Campo>
         <Campo
-          etiqueta="Coordenadas"
-          ayuda="Latitud y longitud, para llegar. Se copian de un mapa con el botón derecho sobre el punto"
+          etiqueta="Enlace de Google Maps"
+          ayuda="Desde el móvil: compartir la ubicación y pegar aquí el enlace"
           ancho="completo"
         >
-          <div className="flex flex-wrap gap-2">
-            <input
-              inputMode="decimal"
-              placeholder="Latitud · 28.0916"
-              value={valor.latitud}
-              onChange={(e) => set("latitud", e.target.value)}
-              className={`${CLASE_CAMPO} min-w-0 flex-1`}
-            />
-            <input
-              inputMode="decimal"
-              placeholder="Longitud · -16.6291"
-              value={valor.longitud}
-              onChange={(e) => set("longitud", e.target.value)}
-              className={`${CLASE_CAMPO} min-w-0 flex-1`}
-            />
-          </div>
+          <input
+            type="url"
+            inputMode="url"
+            placeholder="https://maps.app.goo.gl/…"
+            value={valor.ubicacionUrl}
+            onChange={(e) => set("ubicacionUrl", e.target.value)}
+            className={CLASE_CAMPO}
+          />
         </Campo>
       </Seccion>
 

@@ -21,10 +21,24 @@ const MES_ACTUAL = new Intl.DateTimeFormat("es-ES", { month: "long" }).format(
 
 export default function DashboardPage() {
   const [indicadores, setIndicadores] = useState<Indicadores | null>(null);
+  // Revisiones que tocan segun el contrato del cliente. Es otra pregunta que
+  // la de las visitas vencidas: aquella mira visitas ya programadas cuya
+  // fecha paso; esta mira clientes a los que NADIE ha programado nada.
+  const [revisiones, setRevisiones] = useState<{
+    vencidos: number;
+    proximos: number;
+  } | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const cargar = useCallback(async () => {
+    // Solo oficina y administracion pueden pedir la planificacion; para un
+    // tecnico responde 403 y el aviso sencillamente no aparece.
+    fetch("/api/vencimientos")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d && setRevisiones(d.resumen))
+      .catch(() => {});
+
     const res = await fetch("/api/dashboard");
     if (res.ok) {
       setIndicadores(await res.json());
@@ -53,6 +67,27 @@ export default function DashboardPage() {
         <p className="mb-4 rounded-md border border-peligro-borde bg-peligro-suave p-3 text-sm text-peligro-contraste">
           {error}
         </p>
+      )}
+
+      {/* El aviso va ARRIBA del todo y solo aparece si hay algo que hacer:
+          una tarjeta permanente con un cero se deja de leer a la semana. */}
+      {revisiones && revisiones.vencidos + revisiones.proximos > 0 && (
+        <a
+          href="/vencimientos"
+          className="mb-8 block rounded-lg border border-aviso bg-aviso-suave p-4 hover:opacity-90"
+        >
+          <p className="text-sm font-semibold text-aviso-contraste">
+            {revisiones.vencidos > 0
+              ? `${revisiones.vencidos} cliente${revisiones.vencidos === 1 ? "" : "s"} con la revisión vencida`
+              : `${revisiones.proximos} revisión${revisiones.proximos === 1 ? "" : "es"} a punto de vencer`}
+          </p>
+          <p className="mt-0.5 text-sm text-aviso-contraste">
+            {revisiones.vencidos > 0 && revisiones.proximos > 0
+              ? `Y ${revisiones.proximos} más que vencen en los próximos 30 días. `
+              : ""}
+            Ver quiénes son y programarles la visita →
+          </p>
+        </a>
       )}
 
       <section className="mb-8">

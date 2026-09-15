@@ -23,6 +23,7 @@ export type ClienteFormulario = {
   codigoPostal: string;
   isla: string;
   email: string;
+  emailPlanta: string;
   telefono: string;
   cups: string;
   potenciaContratada: string;
@@ -31,7 +32,12 @@ export type ClienteFormulario = {
   numeroInversor: string;
   comercializadora: string;
   tieneBateria: boolean;
+  proveedor: string;
+  fechaInstalacion: string;
+  latitud: string;
+  longitud: string;
   tieneMantenimiento: boolean;
+  periodicidadMantenimiento: string;
   comentarios: string;
 };
 
@@ -52,6 +58,7 @@ export function formularioVacio(): ClienteFormulario {
     codigoPostal: "",
     isla: "",
     email: "",
+    emailPlanta: "",
     telefono: "",
     cups: "",
     potenciaContratada: "",
@@ -60,7 +67,12 @@ export function formularioVacio(): ClienteFormulario {
     numeroInversor: "",
     comercializadora: "",
     tieneBateria: false,
+    proveedor: "",
+    fechaInstalacion: "",
+    latitud: "",
+    longitud: "",
     tieneMantenimiento: false,
+    periodicidadMantenimiento: "",
     comentarios: "",
   };
 }
@@ -79,6 +91,7 @@ export function formularioDesdeCliente(
     codigoPostal: texto(c.codigoPostal),
     isla: texto(c.isla),
     email: texto(c.email),
+    emailPlanta: texto(c.emailPlanta),
     telefono: texto(c.telefono),
     cups: texto(c.cups),
     potenciaContratada: texto(c.potenciaContratada),
@@ -87,7 +100,14 @@ export function formularioDesdeCliente(
     numeroInversor: texto(c.numeroInversor),
     comercializadora: texto(c.comercializadora),
     tieneBateria: Boolean(c.tieneBateria),
+    proveedor: texto(c.proveedor),
+    fechaInstalacion: texto(c.fechaInstalacion),
+    latitud: texto(c.latitud),
+    longitud: texto(c.longitud),
     tieneMantenimiento: Boolean(c.tieneMantenimiento),
+    periodicidadMantenimiento: c.periodicidadMantenimiento
+      ? String(c.periodicidadMantenimiento)
+      : "",
     comentarios: texto(c.comentarios),
   };
 }
@@ -103,6 +123,7 @@ export function cuerpoCliente(v: ClienteFormulario) {
     codigoPostal: v.codigoPostal,
     isla: v.isla,
     email: v.email,
+    emailPlanta: v.emailPlanta,
     telefono: v.telefono,
     cups: v.cups,
     potenciaContratada: v.potenciaContratada,
@@ -111,7 +132,15 @@ export function cuerpoCliente(v: ClienteFormulario) {
     numeroInversor: v.numeroInversor,
     comercializadora: v.comercializadora,
     tieneBateria: v.tieneBateria,
+    proveedor: v.proveedor,
+    fechaInstalacion: v.fechaInstalacion,
+    latitud: v.latitud,
+    longitud: v.longitud,
     tieneMantenimiento: v.tieneMantenimiento,
+    // El desplegable manda texto; la API espera el numero o nada.
+    periodicidadMantenimiento: v.periodicidadMantenimiento
+      ? Number(v.periodicidadMantenimiento)
+      : null,
     comentarios: v.comentarios,
   };
 }
@@ -318,6 +347,18 @@ export function FormularioCliente({
             className={CLASE_CAMPO}
           />
         </Campo>
+        <Campo
+          etiqueta="Email de planta"
+          ayuda="Solo si la instalación tiene un buzón propio, distinto del de administración"
+          ancho="completo"
+        >
+          <input
+            type="email"
+            value={valor.emailPlanta}
+            onChange={(e) => set("emailPlanta", e.target.value)}
+            className={CLASE_CAMPO}
+          />
+        </Campo>
       </Seccion>
 
       <Seccion
@@ -379,6 +420,49 @@ export function FormularioCliente({
             onChange={(v) => set("tieneBateria", v)}
           />
         </Campo>
+        <Campo
+          etiqueta="Proveedor"
+          ayuda="Quién suministró los equipos. Hace falta para reclamar una garantía"
+        >
+          <input
+            value={valor.proveedor}
+            onChange={(e) => set("proveedor", e.target.value)}
+            className={CLASE_CAMPO}
+          />
+        </Campo>
+        <Campo
+          etiqueta="Fecha de instalación"
+          ayuda="Cuándo se puso en marcha. De aquí sale el primer mantenimiento"
+        >
+          <input
+            type="date"
+            value={valor.fechaInstalacion}
+            onChange={(e) => set("fechaInstalacion", e.target.value)}
+            className={CLASE_CAMPO}
+          />
+        </Campo>
+        <Campo
+          etiqueta="Coordenadas"
+          ayuda="Latitud y longitud, para llegar. Se copian de un mapa con el botón derecho sobre el punto"
+          ancho="completo"
+        >
+          <div className="flex flex-wrap gap-2">
+            <input
+              inputMode="decimal"
+              placeholder="Latitud · 28.0916"
+              value={valor.latitud}
+              onChange={(e) => set("latitud", e.target.value)}
+              className={`${CLASE_CAMPO} min-w-0 flex-1`}
+            />
+            <input
+              inputMode="decimal"
+              placeholder="Longitud · -16.6291"
+              value={valor.longitud}
+              onChange={(e) => set("longitud", e.target.value)}
+              className={`${CLASE_CAMPO} min-w-0 flex-1`}
+            />
+          </div>
+        </Campo>
       </Seccion>
 
       <Seccion titulo="Servicio">
@@ -391,6 +475,26 @@ export function FormularioCliente({
             onChange={(v) => set("tieneMantenimiento", v)}
           />
         </Campo>
+        {/* Solo tiene sentido con el mantenimiento contratado: sin contrato
+            no hay nada que planificar, y ofrecerlo sugeriría que sí. */}
+        {valor.tieneMantenimiento && (
+          <Campo
+            etiqueta="Periodicidad"
+            ayuda="Cada cuánto toca revisión. De aquí salen los avisos de vencimiento"
+          >
+            <select
+              value={valor.periodicidadMantenimiento}
+              onChange={(e) => set("periodicidadMantenimiento", e.target.value)}
+              className={CLASE_CAMPO}
+            >
+              <option value="">— Sin definir —</option>
+              <option value="3">Trimestral · cada 3 meses</option>
+              <option value="6">Semestral · cada 6 meses</option>
+              <option value="12">Anual · cada 12 meses</option>
+              <option value="24">Bianual · cada 24 meses</option>
+            </select>
+          </Campo>
+        )}
         <Campo etiqueta="Comentarios" ancho="completo">
           <textarea
             rows={3}

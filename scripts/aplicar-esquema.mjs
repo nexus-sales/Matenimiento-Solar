@@ -386,11 +386,17 @@ try {
   // mantenimiento ya existe en las instalaciones antiguas: comprobar solo si
   // la tabla tiene filas daria por sembradas tambien las dos nuevas, que no
   // llegarian nunca y sin un solo aviso.
-  const PLANTILLAS = ["mantenimiento", "visita_previa", "acta_obra"];
+  const PLANTILLAS = [
+    "mantenimiento",
+    "visita_previa",
+    "acta_obra",
+    "punto_recarga",
+  ];
   const ARCHIVO = {
     mantenimiento: "mantenimiento.json",
     visita_previa: "visita-previa.json",
     acta_obra: "acta-obra.json",
+    punto_recarga: "punto-recarga.json",
   };
   const campos = Object.fromEntries(
     PLANTILLAS.map((p) => [

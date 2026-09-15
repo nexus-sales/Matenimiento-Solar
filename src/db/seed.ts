@@ -49,6 +49,7 @@ const ARCHIVO: Record<Plantilla, string> = {
   mantenimiento: "mantenimiento.json",
   visita_previa: "visita-previa.json",
   acta_obra: "acta-obra.json",
+  punto_recarga: "punto-recarga.json",
 };
 
 function campos(plantilla: Plantilla): CampoSemilla[] {

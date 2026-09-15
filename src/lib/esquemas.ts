@@ -23,6 +23,30 @@ const numeroOpcional = z
   .optional()
   .transform((v) => (v === "" || v === undefined || v === null ? null : v));
 
+/** Fecha en formato ISO, o nada. */
+const fechaOpcional = z
+  .union([
+    z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida."),
+    z.literal(""),
+    z.null(),
+  ])
+  .optional()
+  .transform((v) => v || null);
+
+/**
+ * Coordenada geográfica.
+ *
+ * Se validan los rangos reales: una latitud de 95 no es un sitio, es un error
+ * de tecleo. Y a diferencia de `numeroOpcional`, aquí el cero y los negativos
+ * son válidos —media España está en longitud negativa—.
+ */
+function coordenada(min: number, max: number, mensaje: string) {
+  return z
+    .union([z.coerce.number().min(min, mensaje).max(max, mensaje), z.literal(""), z.null()])
+    .optional()
+    .transform((v) => (v === "" || v === undefined || v === null ? null : v));
+}
+
 /**
  * Isla opcional.
  *
@@ -93,6 +117,12 @@ export const esquemaCliente = z
       .union([z.string().trim().email("Correo electrónico inválido."), z.literal(""), z.null()])
       .optional()
       .transform((v) => v || null),
+    // Algunos clientes tienen un buzón propio para la instalación, distinto
+    // del de administración al que va la factura.
+    emailPlanta: z
+      .union([z.string().trim().email("Correo de planta inválido."), z.literal(""), z.null()])
+      .optional()
+      .transform((v) => v || null),
     telefono: vacioComoNulo,
 
     // --- Instalación fotovoltaica ---
@@ -116,9 +146,22 @@ export const esquemaCliente = z
     numeroInversor: vacioComoNulo,
     comercializadora: vacioComoNulo,
     tieneBateria: z.boolean().optional(),
+    proveedor: vacioComoNulo,
+    fechaInstalacion: fechaOpcional,
+
+    // Coordenadas de la instalación. Se validan los rangos reales: una
+    // latitud de 95 es un error de tecleo, no un sitio.
+    latitud: coordenada(-90, 90, "La latitud va de -90 a 90."),
+    longitud: coordenada(-180, 180, "La longitud va de -180 a 180."),
 
     // --- Servicio ---
     tieneMantenimiento: z.boolean().optional(),
+    // Cada cuántos meses toca revisión. Valores cerrados: son los cuatro
+    // contratos que ofrece la empresa, no un número libre.
+    periodicidadMantenimiento: z
+      .union([z.literal(3), z.literal(6), z.literal(12), z.literal(24), z.null()])
+      .optional()
+      .transform((v) => v ?? null),
     comentarios: vacioComoNulo,
   })
   // Un 38xxx en Lanzarote es casi siempre un error de tecleo. Se comprueba
@@ -155,6 +198,7 @@ export function valoresCliente(d: DatosCliente) {
     isla: d.isla,
     provincia: provinciaDeIsla(d.isla),
     email: d.email,
+    emailPlanta: d.emailPlanta,
     telefono: d.telefono,
     cups: d.cups,
     potenciaContratada: d.potenciaContratada?.toString() ?? null,
@@ -163,7 +207,13 @@ export function valoresCliente(d: DatosCliente) {
     numeroInversor: d.numeroInversor,
     comercializadora: d.comercializadora,
     tieneBateria: d.tieneBateria ?? false,
+    proveedor: d.proveedor,
+    fechaInstalacion: d.fechaInstalacion,
+    // numeric de Postgres viaja como texto, igual que las potencias.
+    latitud: d.latitud?.toString() ?? null,
+    longitud: d.longitud?.toString() ?? null,
     tieneMantenimiento: d.tieneMantenimiento ?? false,
+    periodicidadMantenimiento: d.periodicidadMantenimiento,
     comentarios: d.comentarios,
   };
 }

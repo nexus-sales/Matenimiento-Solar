@@ -70,6 +70,7 @@ export const plantillaEnum = pgEnum("plantilla", [
   "mantenimiento",
   "visita_previa",
   "acta_obra",
+  "punto_recarga",
 ]);
 
 
@@ -125,6 +126,15 @@ export const clientes = pgTable("clientes", {
   // se almacena para que listados y exportaciones la lleven sin recalcular.
   provincia: provinciaEnum("provincia"),
   email: text("email"),
+  /**
+   * Correo especifico de la planta o instalacion.
+   *
+   * Algunos clientes -sobre todo empresas- tienen un buzon propio para lo que
+   * pasa en la instalacion, distinto del correo de administracion al que se
+   * manda la factura. Sin este campo, el acta acababa en la bandeja
+   * equivocada.
+   */
+  emailPlanta: text("email_planta"),
   telefono: text("telefono"),
 
   // --- Instalación fotovoltaica ---
@@ -136,10 +146,47 @@ export const clientes = pgTable("clientes", {
   comercializadora: text("comercializadora"),
   tieneBateria: boolean("tiene_bateria").notNull().default(false),
 
+  /** Quien suministro los equipos. Hace falta para reclamar una garantia. */
+  proveedor: text("proveedor"),
+
+  /**
+   * Cuando se puso en marcha la instalacion.
+   *
+   * Es el origen de dos cuentas: la garantia del fabricante y, si no hay
+   * ninguna visita todavia, la fecha en que toca el primer mantenimiento.
+   */
+  fechaInstalacion: date("fecha_instalacion"),
+
+  /**
+   * Coordenadas de la instalacion, para llegar hasta ella.
+   *
+   * Es un dato de la instalacion, como la direccion: NO geolocaliza a nadie.
+   * La aplicacion no pide la posicion del dispositivo en ningun momento -la
+   * cabecera Permissions-Policy lo sigue impidiendo-; estas se teclean o se
+   * pegan desde un mapa. Muchas instalaciones estan en fincas sin numero de
+   * calle y la direccion no basta para llegar.
+   */
+  latitud: numeric("latitud"),
+  longitud: numeric("longitud"),
+
   // --- Servicio ---
   // Si el cliente tiene contratado el mantenimiento periódico. Es lo que
   // decide si entra en la planificación de visitas.
   tieneMantenimiento: boolean("tiene_mantenimiento").notNull().default(false),
+
+  /**
+   * Cada cuantos meses toca revision, segun su contrato: 3, 6, 12 o 24.
+   *
+   * Dice CUANDO toca, no QUE se revisa. Lo segundo lo sigue decidiendo el
+   * tipo de visita -semestral o anual- que se elige al programarla: un
+   * cliente trimestral tiene cuatro visitas al ano y la oficina marca cual de
+   * ellas lleva el checklist completo.
+   *
+   * Solo significa algo con `tieneMantenimiento` activo, y de ahi salen las
+   * alertas de proximidad.
+   */
+  periodicidadMantenimiento: integer("periodicidad_mantenimiento"),
+
   comentarios: text("comentarios"),
 
   creadoEn: timestamp("creado_en").notNull().defaultNow(),

@@ -50,6 +50,13 @@
       "when": 1788158178161,
       "tag": "0006_permiso_cartera",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789494091376,
+      "tag": "0007_campos_cliente_y_punto_recarga",
+      "breakpoints": true
     }
   ]
 }

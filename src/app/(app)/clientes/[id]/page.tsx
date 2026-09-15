@@ -22,6 +22,7 @@ type Cliente = {
   isla: string | null;
   provincia: string | null;
   email: string | null;
+  emailPlanta: string | null;
   telefono: string | null;
   cups: string | null;
   potenciaContratada: string | null;
@@ -30,7 +31,12 @@ type Cliente = {
   numeroInversor: string | null;
   comercializadora: string | null;
   tieneBateria: boolean;
+  proveedor: string | null;
+  fechaInstalacion: string | null;
+  latitud: string | null;
+  longitud: string | null;
   tieneMantenimiento: boolean;
+  periodicidadMantenimiento: number | null;
   comentarios: string | null;
 };
 
@@ -255,6 +261,9 @@ export default function ClienteDetallePage() {
         <Bloque titulo="Contacto">
           <Dato etiqueta="Teléfono" valor={cliente.telefono || "—"} />
           <Dato etiqueta="Email" valor={cliente.email || "—"} />
+          {cliente.emailPlanta && (
+            <Dato etiqueta="Email de planta" valor={cliente.emailPlanta} />
+          )}
           <Dato etiqueta="Isla" valor={cliente.isla || "—"} />
           <Dato etiqueta="Provincia" valor={cliente.provincia || "—"} />
           <div className="col-span-2 sm:col-span-4">
@@ -300,6 +309,43 @@ export default function ClienteDetallePage() {
             valor={cliente.comercializadora || "—"}
           />
           <Dato etiqueta="Batería" valor={cliente.tieneBateria ? "Sí" : "No"} />
+          <Dato etiqueta="Proveedor" valor={cliente.proveedor || "—"} />
+          <Dato
+            etiqueta="Fecha de instalación"
+            valor={fecha(cliente.fechaInstalacion)}
+          />
+          {cliente.tieneMantenimiento && (
+            <Dato
+              etiqueta="Periodicidad"
+              valor={
+                cliente.periodicidadMantenimiento
+                  ? `Cada ${cliente.periodicidadMantenimiento} meses`
+                  : "Sin definir"
+              }
+            />
+          )}
+          {/* Las coordenadas solo valen si llevan a algún sitio: se pintan
+              como enlace al mapa, no como dos números que nadie va a teclear
+              en otra aplicación. Muchas instalaciones están en fincas sin
+              número de calle y la dirección no basta. */}
+          {cliente.latitud && cliente.longitud && (
+            <div className="col-span-2">
+              <dt className="text-xs text-tenue">Ubicación</dt>
+              <dd className="text-sm">
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${cliente.latitud},${cliente.longitud}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-acento-contraste underline"
+                >
+                  Abrir en el mapa
+                </a>
+                <span className="ml-2 text-xs text-tenue">
+                  {cliente.latitud}, {cliente.longitud}
+                </span>
+              </dd>
+            </div>
+          )}
         </Bloque>
 
         {cliente.comentarios && (

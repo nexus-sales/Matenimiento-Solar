@@ -11,13 +11,19 @@
  * campos en silencio.
  */
 
-export const PLANTILLAS = ["mantenimiento", "visita_previa", "acta_obra"] as const;
+export const PLANTILLAS = [
+  "mantenimiento",
+  "visita_previa",
+  "acta_obra",
+  "punto_recarga",
+] as const;
 export type Plantilla = (typeof PLANTILLAS)[number];
 
 export const NOMBRE_PLANTILLA: Record<Plantilla, string> = {
   mantenimiento: "Visita de mantenimiento",
   visita_previa: "Visita previa",
   acta_obra: "Acta de finalización de obra",
+  punto_recarga: "Punto de recarga",
 };
 
 /** Cómo se llama cada plantilla en singular, para títulos y botones. */
@@ -25,6 +31,7 @@ export const NOMBRE_CORTO_PLANTILLA: Record<Plantilla, string> = {
   mantenimiento: "Mantenimiento",
   visita_previa: "Visita previa",
   acta_obra: "Acta de obra",
+  punto_recarga: "Punto de recarga",
 };
 
 type Bloque = { clave: string; nombre: string };
@@ -59,6 +66,14 @@ export const BLOQUES: Record<Plantilla, readonly Bloque[]> = {
     { clave: "equipos_ac", nombre: "Equipos y AC" },
     { clave: "canalizacion_ac", nombre: "Canalización AC" },
     { clave: "cierre", nombre: "Finalización de obra" },
+  ],
+  punto_recarga: [
+    { clave: "cuadro", nombre: "Cuadro de origen" },
+    { clave: "canalizacion", nombre: "Canalizaciones" },
+    { clave: "contadores", nombre: "Cuarto de contadores" },
+    { clave: "ubicacion", nombre: "Localización del punto" },
+    { clave: "plaza", nombre: "Plaza de garaje" },
+    { clave: "puesta_marcha", nombre: "Puesta en marcha" },
   ],
 };
 
@@ -139,5 +154,10 @@ export const TEXTOS_DOCUMENTO: Record<
     titulo: "Acta de finalización de obra",
     subtitulo: "Acta de finalización de obra de instalación fotovoltaica",
     encabezado: "REGISTRO DE LA OBRA EJECUTADA",
+  },
+  punto_recarga: {
+    titulo: "Acta de instalación de punto de recarga",
+    subtitulo: "Acta de instalación de punto de recarga para vehículo eléctrico",
+    encabezado: "REGISTRO DE LA INSTALACIÓN",
   },
 };

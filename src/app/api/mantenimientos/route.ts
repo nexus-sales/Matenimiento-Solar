@@ -3,7 +3,7 @@ import { z } from "zod";
 import { conSesionRLS } from "@/db";
 import { clientes, intervenciones, usuarios } from "@/db/schema";
 import { and, asc, eq, isNotNull, isNull, lt } from "drizzle-orm";
-import { obtenerSesion } from "@/lib/auth";
+import { obtenerSesion, tieneRol } from "@/lib/auth";
 import { exigirRolEscritura } from "@/lib/permisos";
 import { esquemaTipoVisita } from "@/lib/checklist";
 import { PLANTILLAS } from "@/lib/plantillas";
@@ -74,7 +74,13 @@ export async function GET(req: NextRequest) {
       .orderBy(asc(intervenciones.fechaPrevista))
   );
 
-  return NextResponse.json(resultado);
+  // La respuesta lleva tambien si quien pregunta puede escribir, para que la
+  // lista sepa si dibujar el boton de borrar. Un boton que siempre falla con
+  // 403 es peor que no tenerlo.
+  return NextResponse.json({
+    visitas: resultado,
+    puedeEscribir: tieneRol(sesion, ["admin", "oficina"]),
+  });
 }
 
 

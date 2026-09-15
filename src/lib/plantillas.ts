@@ -26,11 +26,21 @@ export const NOMBRE_PLANTILLA: Record<Plantilla, string> = {
   punto_recarga: "Punto de recarga",
 };
 
-/** Cómo se llama cada plantilla en singular, para títulos y botones. */
+/**
+ * La etiqueta corta, para filtros y listados.
+ *
+ * Son las palabras del cliente: en la oficina se habla de preinstalación,
+ * instalación, mantenimiento y punto de recarga — las cuatro fases por las
+ * que pasa un trabajo.
+ *
+ * NO son los títulos de los documentos, que están en TEXTOS_DOCUMENTO y
+ * siguen diciendo «Acta de finalización de obra» porque es el nombre del
+ * papel que firma el cliente. Una cosa es clasificar y otra titular.
+ */
 export const NOMBRE_CORTO_PLANTILLA: Record<Plantilla, string> = {
   mantenimiento: "Mantenimiento",
-  visita_previa: "Visita previa",
-  acta_obra: "Acta de obra",
+  visita_previa: "Preinstalación",
+  acta_obra: "Instalación",
   punto_recarga: "Punto de recarga",
 };
 

@@ -76,7 +76,11 @@ const MODULOS: Modulo[] = [
   },
   {
     href: "/mantenimientos",
-    etiqueta: "Mantenimientos",
+    // La ruta sigue siendo /mantenimientos: cambiarla romperia los enlaces
+    // que ya circulan. La etiqueta si cambia, porque esa lista ya no es solo
+    // de mantenimientos -tambien hay preinstalaciones, instalaciones y puntos
+    // de recarga- y llamarla asi era justo lo que despistaba.
+    etiqueta: "Trabajos",
     icono: (
       <Icono>
         <path d="M9 11l3 3L22 4" />

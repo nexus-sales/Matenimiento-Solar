@@ -1,75 +1,90 @@
+# Capa automática de seguridad — copia este archivo a .github/workflows/security-scan.yml
+# Corre en cada push y Pull Request. Falla (rojo) si encuentra algo o si no puede comprobarlo:
+# nunca da verde por defecto.
+name: Security Scan
+
 on:
   push:
     branches: [main, master, develop]
   pull_request:
     branches: [main, master, develop]
 
+permissions:
+  contents: read
+
 jobs:
-  secrets:
-    name: Secretos (gitleaks)
+  secretos:
+    name: Secretos (gitleaks, historial completo)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # historial completo — un secreto borrado del HEAD sigue comprometido
-      - name: Run gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0   # historial completo: un secreto borrado del HEAD sigue comprometido
 
-  sast:
-    name: Analisis estatico (semgrep)
+      - name: Instalar gitleaks (binario oficial, sin licencia de organización)
+        env:
+          GITLEAKS_VERSION: "8.18.4"
+        run: |
+          set -euo pipefail
+          curl -sSfL -o "$RUNNER_TEMP/gitleaks.tgz" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          tar -xzf "$RUNNER_TEMP/gitleaks.tgz" -C "$RUNNER_TEMP" gitleaks
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+      - name: Escanear todo el historial
+        run: gitleaks detect --source . --log-opts="--all" --redact --verbose
+
+  analisis-estatico:
+    name: Análisis estático (semgrep)
     runs-on: ubuntu-latest
     container:
       image: semgrep/semgrep
     steps:
-      - uses: actions/checkout@v5
-      # Semgrep escanea el codigo en busca de patrones peligrosos.
-      # --config auto: reglas segun el lenguaje detectado.
-      # Excluimos las reglas del propio workflow de Actions (github-actions.*):
-      # el aviso de "clavar a SHA" es defensa en profundidad de nivel empresa,
-      # no un fallo del codigo de la app. Camino A: vigilar la app, no el estilo del YAML.
-      - name: Run semgrep
+      - uses: actions/checkout@v4
+      # Se excluye solo la regla que pide clavar las actions a un SHA: es defensa en profundidad
+      # de nivel empresa y, sin excluirla, este mismo archivo pone el escaneo en rojo.
+      - name: Ejecutar semgrep
         run: semgrep scan --config auto --error --exclude-rule yaml.github-actions.security.github-actions-mutable-action-tag.github-actions-mutable-action-tag
 
   dependencias:
-    name: Dependencias (segun el stack)
+    name: Dependencias
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
 
       # --- Node ---
-      - name: Detectar Node
-        id: node
-        run: if [ -f package.json ]; then echo "found=true" >> "$GITHUB_OUTPUT"; fi
-      - uses: actions/setup-node@v4
-        if: steps.node.outputs.found == 'true'
-        with:
-          node-version: 22
-      - name: npm audit
-        if: steps.node.outputs.found == 'true'
+      - name: Node — npm audit
+        if: hashFiles('package-lock.json') != ''
         run: npm audit --audit-level=high
 
-      # --- Python ---
-      - name: Detectar Python
-        id: py
-        run: if [ -f requirements.txt ] || [ -f pyproject.toml ]; then echo "found=true" >> "$GITHUB_OUTPUT"; fi
-      - uses: actions/setup-python@v5
-        if: steps.py.outputs.found == 'true'
-        with:
-          python-version: '3.12'
-      - name: pip-audit
-        if: steps.py.outputs.found == 'true'
-        run: |
-          pip install pip-audit
-          if [ -f requirements.txt ]; then pip-audit -r requirements.txt; else pip-audit; fi
+      - name: Node — otro gestor de paquetes (aviso)
+        if: hashFiles('package-lock.json') == '' && (hashFiles('yarn.lock') != '' || hashFiles('pnpm-lock.yaml') != '')
+        run: echo "::warning::Proyecto con yarn o pnpm. Añade 'yarn npm audit' o 'pnpm audit --audit-level high' a este workflow."
 
-      # --- Aviso para otros stacks ---
-      - name: Recordatorio otros stacks
+      - name: Node — package.json sin lockfile (fallo)
+        if: hashFiles('package.json') != '' && hashFiles('package-lock.json') == '' && hashFiles('yarn.lock') == '' && hashFiles('pnpm-lock.yaml') == ''
         run: |
-          for f in composer.json Gemfile go.mod Cargo.toml; do
-            if [ -f "$f" ]; then
-              echo "::warning::Detectado $f — este stack no tiene auditoria de dependencias en el workflow."
-              echo "Anade el paso: composer audit / bundle audit / govulncheck / cargo audit."
-            fi
-          done
+          echo "::error::Hay package.json pero ningún lockfile: no se pueden verificar las versiones exactas instaladas. Genera y versiona package-lock.json."
+          exit 1
+
+      # --- Python ---
+      - name: Python — preparar
+        if: hashFiles('requirements.txt') != ''
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Python — pip-audit
+        if: hashFiles('requirements.txt') != ''
+        run: |
+          python -m pip install --quiet pip-audit
+          pip-audit -r requirements.txt
+
+      - name: Python — solo pyproject.toml (aviso)
+        if: hashFiles('requirements.txt') == '' && hashFiles('pyproject.toml') != ''
+        run: echo "::warning::Proyecto Python sin requirements.txt. Exporta las dependencias fijadas a requirements.txt para poder auditarlas aquí."
+
+      # --- Otros stacks ---
+      - name: Otros stacks (aviso)
+        if: hashFiles('composer.json') != '' || hashFiles('Gemfile') != '' || hashFiles('go.mod') != '' || hashFiles('Cargo.toml') != ''
+        run: echo "::warning::Stack PHP/Ruby/Go/Rust detectado sin paso dedicado. Añade composer audit / bundle audit / govulncheck ./... / cargo audit."

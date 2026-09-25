@@ -2,6 +2,9 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { hashPassword, verificarPassword } from "./password";
 import { modoPruebasActivo, idUsuarioPruebas } from "./modo-pruebas";
+import { eq } from "drizzle-orm";
+import { dbAuthService } from "@/db";
+import { usuarios } from "@/db/schema";
 
 // Se reexportan para no romper los imports existentes de \"@/lib/auth\".
 // La lógica en sí vive en password.ts, que no depende de next/headers,
@@ -85,14 +88,34 @@ export async function obtenerSesion(): Promise<SesionPayload | null> {
 
   const secreto = obtenerSecreto(); // lanza si falta AUTH_SECRET — no silenciar
 
+  let sesion: SesionPayload;
   try {
     const { payload } = await jwtVerify(token, secreto);
-    return payload as unknown as SesionPayload;
+    sesion = payload as unknown as SesionPayload;
   } catch {
     // aquí solo llegan errores de token inválido o caducado
 
     return null;
   }
+
+  // El token dura 12 horas, pero una baja o un cambio de rol tienen que
+  // valer ya. Sin esto, un técnico dado de baja seguía leyendo las fichas de
+  // sus clientes hasta que caducaba la cookie, y un admin degradado seguía
+  // siendo admin también para RLS, que toma el rol de la sesión.
+  //
+  // Se consulta con dbAuthService porque su rol ya puede leer justo estas
+  // columnas, y porque la conexión normal exige un contexto RLS que todavía
+  // no existe. Devolver null reutiliza lo que ya hay: las rutas responden
+  // 401, el cliente vuelve al login y el layout redirige.
+  const [actual] = await dbAuthService
+    .select({ rol: usuarios.rol, activo: usuarios.activo })
+    .from(usuarios)
+    .where(eq(usuarios.id, sesion.id))
+    .limit(1);
+
+  if (!actual || !actual.activo || actual.rol !== sesion.rol) return null;
+
+  return sesion;
 }
 
 /**

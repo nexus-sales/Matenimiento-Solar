@@ -29,12 +29,14 @@ const pool = new Pool({
 export const db = drizzle(pool, { schema });
 
 /**
- * Conexión de servicio SOLO para el paso de login.
+ * Conexión de servicio SOLO para comprobar quién es el usuario: el login y
+ * la verificación de que una sesión sigue activa y con el mismo rol
+ * (obtenerSesion en src/lib/auth.ts).
  * Antes de autenticar no existe todavía un app.current_user_id que las
  * políticas RLS puedan exigir, así que este pool usa un rol de Postgres
  * aparte con BYPASSRLS, limitado por GRANT a leer únicamente lo necesario
- * de `usuarios` (id, email, password_hash, rol, activo) — nunca se usa
- * para nada más. Ver instrucciones de creación del rol en src/db/rls.sql.
+ * de `usuarios` (id, email, nombre, password_hash, rol, activo) — nunca se
+ * usa para nada más. Ver instrucciones de creación del rol en src/db/rls.sql.
  */
 const poolAuth = new Pool({
   connectionString: process.env.DATABASE_URL_AUTH_SERVICE,
